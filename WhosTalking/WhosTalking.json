@@ -1,0 +1,9 @@
+{
+    "Author": "ash",
+    "Name": "Who's Talking",
+    "Punchline": "See Discord voice activity indicators directly on your party list.",
+    "Description": "Once installed, the plugin should Just Work, if you have Discord open! If you're talking to people whose Discord nickname doesn't match their character's name, check out the plugin settings.",
+    "InternalName": "WhosTalking",
+    "ApplicableVersion": "any",
+    "Tags": []
+}
