@@ -10,7 +10,7 @@ public sealed class Configuration: IPluginConfiguration {
     [NonSerialized]
     private DalamudPluginInterface? pluginInterface;
 
-    public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+    public string? AccessToken { get; set; }
     public int Version { get; set; } = 0;
 
     public void Initialize(DalamudPluginInterface pluginInterface) {

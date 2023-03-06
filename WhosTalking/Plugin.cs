@@ -10,6 +10,7 @@ namespace WhosTalking;
 
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
+    internal DiscordConnection Connection;
     private Stack<Action> disposeActions = new();
     public WindowSystem WindowSystem = new("WhosTalking");
 
@@ -34,6 +35,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.disposeActions.Push(() => this.PluginInterface.UiBuilder.Draw -= this.Draw);
         this.PluginInterface.UiBuilder.OpenConfigUi += this.OpenConfigUi;
         this.disposeActions.Push(() => this.PluginInterface.UiBuilder.OpenConfigUi -= this.OpenConfigUi);
+
+        this.Connection = new DiscordConnection(this);
+        this.disposeActions.Push(() => this.Connection.Dispose());
     }
 
     internal DalamudPluginInterface PluginInterface { get; init; }

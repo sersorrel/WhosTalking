@@ -5,24 +5,24 @@ using ImGuiNET;
 namespace WhosTalking.Windows;
 
 public sealed class ConfigWindow: Window, IDisposable {
-    private readonly Configuration configuration;
+    private readonly Plugin plugin;
 
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
         ImGuiWindowFlags.AlwaysAutoResize
     ) {
-        this.configuration = plugin.Configuration;
+        this.plugin = plugin;
     }
 
     public void Dispose() {}
 
     public override void Draw() {
-        // can't ref a property, so use a local copy
-        var configValue = this.configuration.SomePropertyToBeSavedAndWithADefault;
-        if (ImGui.Checkbox("Random Config Bool", ref configValue)) {
-            this.configuration.SomePropertyToBeSavedAndWithADefault = configValue;
-            // can save immediately on change, if you don't want to provide a "Save and Close" button
-            this.configuration.Save();
+        if (this.plugin.Connection.IsConnected) {
+            ImGui.TextUnformatted(
+                $"Authenticated as {this.plugin.Connection.Username}#{this.plugin.Connection.Discriminator}."
+            );
+        } else {
+            ImGui.Text("Discord not connected.");
         }
     }
 }
