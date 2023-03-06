@@ -10,11 +10,22 @@ using Websocket.Client;
 
 namespace WhosTalking;
 
+internal class DiscordChannel {
+    public DiscordChannel(string guild, string channel) {
+        this.Guild = guild;
+        this.Channel = channel;
+    }
+
+    public string Guild { get; }
+    public string Channel { get; }
+}
+
 public class DiscordConnection {
     private const string ClientId = "207646673902501888";
     private readonly Stack<Action> disposeActions = new();
     private readonly Plugin plugin;
     private readonly WebsocketClient webSocket;
+    private DiscordChannel? currentChannel;
 
     public DiscordConnection(Plugin plugin) {
         this.plugin = plugin;
@@ -47,6 +58,33 @@ public class DiscordConnection {
 
     public bool IsConnected => this.webSocket.IsRunning;
 
+    private DiscordChannel? channel {
+        get => this.currentChannel;
+        set {
+            if (value == this.currentChannel) {
+                return;
+            }
+
+            if (this.currentChannel != null) {
+                this.Unsubscribe("VOICE_STATE_CREATE", new { channel_id = this.currentChannel.Channel });
+                this.Unsubscribe("VOICE_STATE_UPDATE", new { channel_id = this.currentChannel.Channel });
+                this.Unsubscribe("VOICE_STATE_DELETE", new { channel_id = this.currentChannel.Channel });
+                this.Unsubscribe("SPEAKING_START", new { channel_id = this.currentChannel.Channel });
+                this.Unsubscribe("SPEAKING_STOP", new { channel_id = this.currentChannel.Channel });
+            }
+
+            if (value != null) {
+                this.Subscribe("VOICE_STATE_CREATE", new { channel_id = value.Channel });
+                this.Subscribe("VOICE_STATE_UPDATE", new { channel_id = value.Channel });
+                this.Subscribe("VOICE_STATE_DELETE", new { channel_id = value.Channel });
+                this.Subscribe("SPEAKING_START", new { channel_id = value.Channel });
+                this.Subscribe("SPEAKING_STOP", new { channel_id = value.Channel });
+            }
+
+            this.currentChannel = value;
+        }
+    }
+
     public void Dispose() {
         foreach (var action in this.disposeActions) {
             action.Invoke();
@@ -60,35 +98,77 @@ public class DiscordConnection {
         var cmd = root.GetProperty("cmd");
         root.TryGetProperty("evt", out var evt);
         switch (cmd.GetString()) {
-            case "DISPATCH":
+            case "DISPATCH": {
                 switch (evt.GetString()) {
-                    case "READY":
+                    case "READY": {
+                        // connected, ready to do auth
+                        var version = root.GetProperty("data").GetProperty("v").GetInt64();
+                        if (version != 1) {
+                            PluginLog.Warning("unexpected api version {version}", version);
+                        }
+
                         this.Authenticate();
                         break;
+                    }
+                    case "VOICE_CHANNEL_SELECT": {
+                        // the client joins or leaves a voice channel
+                        // join: both guild and channel are set
+                        // leave: channel is null, guild is not present
+                        string? guild, channel;
+                        if (root.GetProperty("data").TryGetProperty("guild_id", out var guildElement)
+                            && root.GetProperty("data").TryGetProperty("channel_id", out var channelElement)
+                            && (guild = guildElement.GetString()) != null
+                            && (channel = channelElement.GetString()) != null
+                            ) {
+                            this.channel = new DiscordChannel(guild, channel);
+                        } else {
+                            this.channel = null;
+                        }
+
+                        break;
+                    }
+                    case "VOICE_STATE_CREATE": {
+                        break;
+                    }
+                    case "VOICE_STATE_UPDATE": {
+                        break;
+                    }
+                    case "VOICE_STATE_DELETE": {
+                        break;
+                    }
+                    case "SPEAKING_START": {
+                        break;
+                    }
+                    case "SPEAKING_STOP": {
+                        break;
+                    }
                 }
 
                 break;
-
-            case "AUTHENTICATE":
+            }
+            case "AUTHENTICATE": {
                 switch (evt.GetString()) {
-                    case "ERROR":
+                    case "ERROR": {
                         this.AccessToken = null;
                         this.Authorize1();
                         break;
-
-                    default:
+                    }
+                    default: {
                         var user = root.GetProperty("data").GetProperty("user");
                         this.Username = user.GetProperty("username").GetString();
                         this.DisplayName = user.GetProperty("display_name").GetString();
                         this.Discriminator = user.GetProperty("discriminator").GetString();
+                        this.Subscribe("VOICE_CHANNEL_SELECT");
                         break;
+                    }
                 }
 
                 break;
-
-            case "AUTHORIZE":
+            }
+            case "AUTHORIZE": {
                 this.Authorize2(root.GetProperty("data").GetProperty("code").GetString()!);
                 break;
+            }
         }
     }
 
@@ -140,6 +220,40 @@ public class DiscordConnection {
                     args = new {
                         access_token = this.AccessToken,
                     },
+                    nonce = Guid.NewGuid().ToString(),
+                }
+            )
+        );
+    }
+
+    private void Subscribe(string evt) {
+        this.Subscribe(evt, new {});
+    }
+
+    private void Subscribe(string evt, object args) {
+        this.webSocket.Send(
+            JsonSerializer.Serialize(
+                new {
+                    cmd = "SUBSCRIBE",
+                    evt,
+                    args,
+                    nonce = Guid.NewGuid().ToString(),
+                }
+            )
+        );
+    }
+
+    private void Unsubscribe(string evt) {
+        this.Unsubscribe(evt, new {});
+    }
+
+    private void Unsubscribe(string evt, object args) {
+        this.webSocket.Send(
+            JsonSerializer.Serialize(
+                new {
+                    cmd = "UNSUBSCRIBE",
+                    evt,
+                    args,
                     nonce = Guid.NewGuid().ToString(),
                 }
             )
