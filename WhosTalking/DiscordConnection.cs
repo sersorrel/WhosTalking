@@ -20,8 +20,46 @@ internal class DiscordChannel {
     public string Channel { get; }
 }
 
+internal class User {
+    public readonly string UserId;
+    public Boolean? Deafened;
+    public string? Discriminator;
+    public string? DisplayName;
+    public Boolean? Muted;
+    public Boolean? Speaking;
+    public string? Username;
+
+    public User(
+        string userId,
+        string? username = null,
+        string? discriminator = null,
+        string? displayName = null,
+        Boolean? muted = null,
+        Boolean? deafened = null,
+        Boolean? speaking = null
+    ) {
+        this.UserId = userId;
+        this.Username = username;
+        this.Discriminator = discriminator;
+        this.DisplayName = displayName;
+        this.Muted = muted;
+        this.Deafened = deafened;
+        this.Speaking = speaking;
+    }
+
+    public void Update(User other) {
+        this.Username = other.Username ?? this.Username;
+        this.Discriminator = other.Discriminator ?? this.Discriminator;
+        this.DisplayName = other.DisplayName ?? this.DisplayName;
+        this.Muted = other.Muted ?? this.Muted;
+        this.Deafened = other.Deafened ?? this.Deafened;
+        this.Speaking = other.Speaking ?? this.Speaking;
+    }
+}
+
 public class DiscordConnection {
     private const string ClientId = "207646673902501888";
+    private readonly Dictionary<string, User> allUsers;
     private readonly Stack<Action> disposeActions = new();
     private readonly Plugin plugin;
     private readonly WebsocketClient webSocket;
@@ -29,6 +67,7 @@ public class DiscordConnection {
 
     public DiscordConnection(Plugin plugin) {
         this.plugin = plugin;
+        this.allUsers = new Dictionary<string, User>();
         this.webSocket = new WebsocketClient(
             new Uri($"ws://127.0.0.1:6463/?v=1&client_id={ClientId}"),
             () => {
@@ -96,6 +135,7 @@ public class DiscordConnection {
         if (info.Type == DisconnectionType.NoMessageReceived) {
             return;
         }
+
         PluginLog.Error(
             "disconnected; exception {exception}, type {type}, status {status}, description {description}",
             info.Exception,
@@ -141,19 +181,69 @@ public class DiscordConnection {
 
                         break;
                     }
-                    case "VOICE_STATE_CREATE": {
-                        break;
-                    }
+                    case "VOICE_STATE_CREATE":
                     case "VOICE_STATE_UPDATE": {
+                        var data = root.GetProperty("data");
+                        var user = data.GetProperty("user");
+                        var voiceState = data.GetProperty("voice_state");
+                        var selfMuteElement = voiceState.GetProperty("self_mute");
+                        var muteElement = voiceState.GetProperty("mute");
+                        var suppressElement = voiceState.GetProperty("suppress");
+                        var selfDeafElement = voiceState.GetProperty("self_deaf");
+                        var deafElement = voiceState.GetProperty("deaf");
+                        var newUser = new User(
+                            user.GetProperty("id").GetString()!,
+                            user.GetProperty("username").GetString(),
+                            user.GetProperty("discriminator").GetString(),
+                            data.GetProperty("nick").GetString(),
+                            selfMuteElement.ValueKind != JsonValueKind.Null
+                                ? selfMuteElement.GetBoolean()
+                                : muteElement.ValueKind != JsonValueKind.Null
+                                    ? muteElement.GetBoolean()
+                                    : suppressElement.ValueKind != JsonValueKind.Null
+                                        ? suppressElement.GetBoolean()
+                                        : null,
+                            selfDeafElement.ValueKind != JsonValueKind.Null
+                                ? selfDeafElement.GetBoolean()
+                                : deafElement.ValueKind != JsonValueKind.Null
+                                    ? deafElement.GetBoolean()
+                                    : null
+                        );
+                        if (this.allUsers.TryGetValue(newUser.UserId, out var existingUser)) {
+                            existingUser.Update(newUser);
+                        } else {
+                            this.allUsers.Add(newUser.UserId, newUser);
+                        }
+
+                        // TODO: handle VOICE_STATE_CREATE case where UserId matches our own ID
+                        // (we joined, and need to find out which room we're in)
                         break;
                     }
                     case "VOICE_STATE_DELETE": {
+                        var userId = root.GetProperty("data").GetProperty("user").GetProperty("id").GetString()!;
+                        this.allUsers.Remove(userId);
+                        // TODO: handle case where UserId matches our own ID
+                        // (we left, maybe by getting moved into another room)
                         break;
                     }
                     case "SPEAKING_START": {
+                        var userId = root.GetProperty("data").GetProperty("user_id").GetString()!;
+                        if (this.allUsers.TryGetValue(userId, out var user)) {
+                            user.Speaking = true;
+                        } else {
+                            PluginLog.Warning("got SPEAKING_START for unknown user {id}", userId);
+                        }
+
                         break;
                     }
                     case "SPEAKING_STOP": {
+                        var userId = root.GetProperty("data").GetProperty("user_id").GetString()!;
+                        if (this.allUsers.TryGetValue(userId, out var user)) {
+                            user.Speaking = false;
+                        } else {
+                            PluginLog.Warning("got SPEAKING_STOP for unknown user {id}", userId);
+                        }
+
                         break;
                     }
                 }
