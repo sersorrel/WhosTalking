@@ -41,6 +41,7 @@ public class DiscordConnection {
 
         this.webSocket.ReconnectTimeout = TimeSpan.FromMinutes(5);
         this.webSocket.MessageReceived.Subscribe(this.OnMessage);
+        this.webSocket.DisconnectionHappened.Subscribe(OnError);
         this.webSocket.Start();
     }
 
@@ -58,7 +59,7 @@ public class DiscordConnection {
 
     public bool IsConnected => this.webSocket.IsRunning;
 
-    private DiscordChannel? channel {
+    private DiscordChannel? Channel {
         get => this.currentChannel;
         set {
             if (value == this.currentChannel) {
@@ -91,6 +92,19 @@ public class DiscordConnection {
         }
     }
 
+    private static void OnError(DisconnectionInfo info) {
+        if (info.Type == DisconnectionType.NoMessageReceived) {
+            return;
+        }
+        PluginLog.Error(
+            "disconnected; exception {exception}, type {type}, status {status}, description {description}",
+            info.Exception,
+            info.Type,
+            info.CloseStatus?.ToString() ?? "(null)",
+            info.CloseStatusDescription
+        );
+    }
+
     private void OnMessage(ResponseMessage message) {
         PluginLog.Log("got message: {message}", message);
         using var document = JsonDocument.Parse(message.ToString());
@@ -119,10 +133,10 @@ public class DiscordConnection {
                             && root.GetProperty("data").TryGetProperty("channel_id", out var channelElement)
                             && (guild = guildElement.GetString()) != null
                             && (channel = channelElement.GetString()) != null
-                            ) {
-                            this.channel = new DiscordChannel(guild, channel);
+                        ) {
+                            this.Channel = new DiscordChannel(guild, channel);
                         } else {
-                            this.channel = null;
+                            this.Channel = null;
                         }
 
                         break;
