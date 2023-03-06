@@ -28,6 +28,7 @@ public class DiscordConnection {
         );
         this.disposeActions.Push(() => this.webSocket.Dispose());
 
+        this.webSocket.ReconnectTimeout = TimeSpan.FromMinutes(5);
         this.webSocket.MessageReceived.Subscribe(this.OnMessage);
         this.webSocket.Start();
     }
