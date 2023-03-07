@@ -18,9 +18,12 @@ public sealed class ConfigWindow: Window, IDisposable {
 
     public override void Draw() {
         if (this.plugin.Connection.IsConnected) {
-            ImGui.TextUnformatted(
-                $"Authenticated as {this.plugin.Connection.Username}#{this.plugin.Connection.Discriminator}."
-            );
+            var self = this.plugin.Connection.Self;
+            if (self != null) {
+                ImGui.TextUnformatted($"Authenticated as {self.Username}#{self.Discriminator}.");
+            } else {
+                ImGui.Text("Connected, but not authenticated.");
+            }
         } else {
             ImGui.Text("Discord not connected.");
         }

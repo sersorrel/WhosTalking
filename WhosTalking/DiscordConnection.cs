@@ -20,7 +20,7 @@ internal class DiscordChannel {
     public string Channel { get; }
 }
 
-internal class User {
+public class User {
     public readonly string UserId;
     public Boolean? Deafened;
     public string? Discriminator;
@@ -84,9 +84,7 @@ public class DiscordConnection {
         this.webSocket.Start();
     }
 
-    public string? Username { get; private set; }
-    public string? DisplayName { get; private set; }
-    public string? Discriminator { get; private set; }
+    public User? Self { get; private set; }
 
     private string? AccessToken {
         get => this.plugin.Configuration.AccessToken;
@@ -215,15 +213,37 @@ public class DiscordConnection {
                             this.allUsers.Add(newUser.UserId, newUser);
                         }
 
-                        // TODO: handle VOICE_STATE_CREATE case where UserId matches our own ID
-                        // (we joined, and need to find out which room we're in)
+                        if (evt.GetString() == "VOICE_STATE_CREATE" && newUser.UserId == this.Self?.UserId) {
+                            // we joined, and need to find out which room we're in
+                            this.webSocket.Send(
+                                JsonSerializer.Serialize(
+                                    new {
+                                        cmd = "GET_SELECTED_VOICE_CHANNEL",
+                                        nonce = Guid.NewGuid().ToString(),
+                                    }
+                                )
+                            );
+                        }
+
                         break;
                     }
                     case "VOICE_STATE_DELETE": {
                         var userId = root.GetProperty("data").GetProperty("user").GetProperty("id").GetString()!;
                         this.allUsers.Remove(userId);
-                        // TODO: handle case where UserId matches our own ID
-                        // (we left, maybe by getting moved into another room)
+                        if (userId == this.Self?.UserId) {
+                            // we left, maybe by getting moved into another room
+                            this.allUsers.Clear();
+                            this.allUsers.Add(this.Self.UserId, this.Self);
+                            this.webSocket.Send(
+                                JsonSerializer.Serialize(
+                                    new {
+                                        cmd = "GET_SELECTED_VOICE_CHANNEL",
+                                        nonce = Guid.NewGuid().ToString(),
+                                    }
+                                )
+                            );
+                        }
+
                         break;
                     }
                     case "SPEAKING_START": {
@@ -254,14 +274,18 @@ public class DiscordConnection {
                 switch (evt.GetString()) {
                     case "ERROR": {
                         this.AccessToken = null;
+                        this.Self = null;
                         this.Authorize1();
                         break;
                     }
                     default: {
                         var user = root.GetProperty("data").GetProperty("user");
-                        this.Username = user.GetProperty("username").GetString();
-                        this.DisplayName = user.GetProperty("display_name").GetString();
-                        this.Discriminator = user.GetProperty("discriminator").GetString();
+                        this.Self = new User(
+                            user.GetProperty("id").GetString()!,
+                            user.GetProperty("username").GetString(),
+                            user.GetProperty("discriminator").GetString(),
+                            user.GetProperty("display_name").GetString()
+                        );
                         this.Subscribe("VOICE_CHANNEL_SELECT");
                         break;
                     }
@@ -271,6 +295,50 @@ public class DiscordConnection {
             }
             case "AUTHORIZE": {
                 this.Authorize2(root.GetProperty("data").GetProperty("code").GetString()!);
+                break;
+            }
+            case "GET_SELECTED_VOICE_CHANNEL": {
+                var data = root.GetProperty("data");
+                string? guild, channel;
+                if (data.TryGetProperty("guild_id", out var guildElement)
+                    && data.TryGetProperty("channel_id", out var channelElement)
+                    && (guild = guildElement.GetString()) != null
+                    && (channel = channelElement.GetString()) != null
+                ) {
+                    this.Channel = new DiscordChannel(guild, channel);
+                } else {
+                    this.Channel = null;
+                }
+
+                this.allUsers.Clear();
+                foreach (var user in data.GetProperty("voice_states").EnumerateArray()) {
+                    var voiceState = data.GetProperty("voice_state");
+                    var selfMuteElement = voiceState.GetProperty("self_mute");
+                    var muteElement = voiceState.GetProperty("mute");
+                    var suppressElement = voiceState.GetProperty("suppress");
+                    var selfDeafElement = voiceState.GetProperty("self_deaf");
+                    var deafElement = voiceState.GetProperty("deaf");
+                    var newUser = new User(
+                        user.GetProperty("id").GetString()!,
+                        user.GetProperty("username").GetString(),
+                        user.GetProperty("discriminator").GetString(),
+                        data.GetProperty("nick").GetString(),
+                        selfMuteElement.ValueKind != JsonValueKind.Null
+                            ? selfMuteElement.GetBoolean()
+                            : muteElement.ValueKind != JsonValueKind.Null
+                                ? muteElement.GetBoolean()
+                                : suppressElement.ValueKind != JsonValueKind.Null
+                                    ? suppressElement.GetBoolean()
+                                    : null,
+                        selfDeafElement.ValueKind != JsonValueKind.Null
+                            ? selfDeafElement.GetBoolean()
+                            : deafElement.ValueKind != JsonValueKind.Null
+                                ? deafElement.GetBoolean()
+                                : null
+                    );
+                    this.allUsers.Add(newUser.UserId, newUser);
+                }
+
                 break;
             }
         }
