@@ -38,6 +38,8 @@ public sealed class Plugin: IDalamudPlugin {
 
         this.Connection = new DiscordConnection(this);
         this.disposeActions.Push(() => this.Connection.Dispose());
+
+        this.MainWindow.IsOpen = true;
     }
 
     internal DalamudPluginInterface PluginInterface { get; init; }
