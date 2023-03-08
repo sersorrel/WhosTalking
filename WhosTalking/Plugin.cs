@@ -7,6 +7,7 @@ using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using JetBrains.Annotations;
@@ -69,6 +70,17 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     private User? XivToDiscord(string name, string? world) {
+        foreach (var user in this.Connection.AllUsers.Values) {
+            var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
+            if (discordName == null) {
+                continue;
+            }
+
+            if (discordName == name || discordName.ToLowerInvariant().Contains(name.ToLowerInvariant())) {
+                return user;
+            }
+        }
+
         return null;
     }
 
