@@ -162,11 +162,15 @@ public class DiscordConnection {
     }
 
     private void OnMessage(ResponseMessage message) {
-        PluginLog.Log("got message: {message}", message);
         using var document = JsonDocument.Parse(message.ToString());
         var root = document.RootElement;
         var cmd = root.GetProperty("cmd");
         root.TryGetProperty("evt", out var evt);
+        if (!(cmd.GetString() == "DISPATCH"
+            && (evt.GetString() == "SPEAKING_START" || evt.GetString() == "SPEAKING_STOP"))) {
+            PluginLog.Log("got message: {message}", message);
+        }
+
         switch (cmd.GetString()) {
             case "DISPATCH": {
                 switch (evt.GetString()) {
