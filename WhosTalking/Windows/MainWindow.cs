@@ -11,7 +11,7 @@ public sealed class MainWindow: Window, IDisposable {
     private readonly Plugin plugin;
 
     public MainWindow(Plugin plugin): base(
-        "Who's Talking",
+        "Who's Talking debug",
         ImGuiWindowFlags.AlwaysAutoResize
     ) {
         this.plugin = plugin;

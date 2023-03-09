@@ -51,7 +51,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.Connection = new DiscordConnection(this);
         this.disposeActions.Push(() => this.Connection.Dispose());
 
+        #if DEBUG
         this.MainWindow.IsOpen = true;
+        #endif
     }
 
     internal DalamudPluginInterface PluginInterface { get; init; }
