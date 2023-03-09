@@ -81,7 +81,7 @@ public class DiscordConnection {
 
         this.webSocket.ReconnectTimeout = TimeSpan.FromMinutes(5);
         this.webSocket.MessageReceived.Subscribe(this.OnMessage);
-        this.webSocket.DisconnectionHappened.Subscribe(OnError);
+        this.webSocket.DisconnectionHappened.Subscribe(this.OnError);
         this.webSocket.Start();
     }
 
@@ -147,14 +147,23 @@ public class DiscordConnection {
         }
     }
 
-    private static void OnError(DisconnectionInfo info) {
-        if (info.Type == DisconnectionType.NoMessageReceived) {
+    private void OnError(DisconnectionInfo info) {
+        this.userId = null;
+        this.currentChannel = null; // bypass the setter, no point sending an unsubscribe when we're disconnected
+        // this is called during dispose, when I guess AllUsers is already gone??
+        // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+        this.AllUsers?.Clear();
+
+        if (info.Type == DisconnectionType.NoMessageReceived
+            || info.Exception == null
+            || (info.Exception?.InnerException is HttpRequestException e
+                && e.Message.StartsWith("Connection refused"))) {
             return;
         }
 
         PluginLog.Error(
             "disconnected; exception {exception}, type {type}, status {status}, description {description}",
-            info.Exception,
+            info.Exception != null ? info.Exception : "(null)",
             info.Type,
             info.CloseStatus?.ToString() ?? "(null)",
             info.CloseStatusDescription

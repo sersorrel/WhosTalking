@@ -1,8 +1,12 @@
 using System;
+using System.Runtime.InteropServices;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
 
 namespace WhosTalking.Windows;
@@ -19,7 +23,16 @@ public sealed class MainWindow: Window, IDisposable {
 
     public void Dispose() {}
 
-    public override void Draw() {
+    private static unsafe string PtrToString(byte* ptr, int maxLen = int.MaxValue) {
+        var len = 0;
+        while (len < maxLen && ptr[len] != '\0') {
+            len++;
+        }
+
+        return Marshal.PtrToStringUTF8((nint)ptr, len);
+    }
+
+    public override unsafe void Draw() {
         ImGui.TextUnformatted($"Current channel: {this.plugin.Connection.Channel?.Channel}");
 
         ImGui.Text($"Party (size {this.plugin.PartyList.Length}):");
@@ -38,6 +51,48 @@ public sealed class MainWindow: Window, IDisposable {
             );
             if (ImGui.IsItemHovered()) {
                 ImGui.SetTooltip($"{user.Username}#{user.Discriminator}");
+            }
+        }
+
+        ImGui.TextUnformatted("agentHUD stuff:");
+        var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
+        var partyMemberCount = agentHud->PartyMemberCount;
+        var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList; // length 10
+        for (var i = 0; i < partyMemberCount; i++) {
+            var partyMember = partyMemberList[i];
+            var name = partyMember.Name != null ? PtrToString(partyMember.Name, 20) : "(null)";
+            ImGui.TextUnformatted($"    [{i}] = {name}{(partyMember.Object == null ? " (BattleChara is null)" : "")}");
+        }
+
+        var module = Framework.Instance()->GetUiModule()->GetInfoModule();
+        if (module != null) {
+            ImGui.Text("cross-world info proxy stuff:");
+            var cwProxy = module->GetInfoProxyById(InfoProxyId.CrossRealmParty);
+            var cwMemberCount = InfoProxyCrossRealm.GetPartyMemberCount();
+            ImGui.TextUnformatted($"cwMemberCount = {cwMemberCount}");
+            for (uint i = 0; i < cwMemberCount; i++) {
+                var member = InfoProxyCrossRealm.GetGroupMember(i);
+                var name = member->Name != null ? PtrToString(member->Name, 20) : "(null)";
+                var idx = member->MemberIndex;
+                var groupIdx = member->GroupIndex;
+                ImGui.TextUnformatted(
+                    $"    [{i}] = {name}, idx {idx} (group idx {groupIdx}, job {member->ClassJobId})"
+                );
+            }
+
+            ImGui.Text("info proxy stuff:");
+            var proxy = module->GetInfoProxyById(InfoProxyId.Party);
+            ImGui.TextUnformatted($"EntryCount = {proxy->EntryCount}");
+            var proxyList = (InfoProxyCommonList*)proxy;
+            var characterArray = proxyList->Data;
+            var characterArraySpan = characterArray->EntriesSpan;
+            ImGui.TextUnformatted($"EntriesSpan->Length = {characterArraySpan.Length}");
+            for (var i = 0; i < 8 && i < characterArraySpan.Length; i++) {
+                fixed (byte* name = characterArraySpan[i].Name) {
+                    ImGui.TextUnformatted(
+                        $"EntriesSpan[{i}] = idx {characterArraySpan[i].DictIndex}, name {(name != null ? PtrToString(name, 20) : "(null)")}"
+                    );
+                }
             }
         }
 

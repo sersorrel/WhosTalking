@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Gui;
 using Dalamud.Interface;
@@ -8,6 +9,10 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using JetBrains.Annotations;
@@ -51,9 +56,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.Connection = new DiscordConnection(this);
         this.disposeActions.Push(() => this.Connection.Dispose());
 
-        #if DEBUG
+#if DEBUG
         this.MainWindow.IsOpen = true;
-        #endif
+#endif
     }
 
     internal DalamudPluginInterface PluginInterface { get; init; }
@@ -83,12 +88,28 @@ public sealed class Plugin: IDalamudPlugin {
             }
         }
 
+        foreach (var user in this.Connection.AllUsers.Values) {
+            var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
+            if (discordName == null) {
+                continue;
+            }
+
+            var split = name.Split(' ');
+            discordName = discordName.ToLowerInvariant();
+            if (discordName.Contains(split[0].ToLowerInvariant())
+                || discordName.Contains(split[1].ToLowerInvariant())) {
+                return user;
+            }
+        }
+
         return null;
     }
 
     private void Draw() {
         this.WindowSystem.Draw();
-        this.DrawOverlay();
+        if (this.Connection?.Self != null) {
+            this.DrawOverlay();
+        }
     }
 
     private unsafe void DrawOverlay() {
@@ -112,18 +133,34 @@ public sealed class Plugin: IDalamudPlugin {
                     false
                 );
                 var drawList = ImGui.GetWindowDrawList();
-                var partyAddon = (AtkUnitBase*)this.GameGui.GetAddonByName("_PartyList");
-                var shouldDrawParty = partyAddon != (AtkUnitBase*)nint.Zero && partyAddon->IsVisible;
+                var partyAddon = (AddonPartyList*)this.GameGui.GetAddonByName("_PartyList");
+                // TODO: check AddonPartyList.HideWhenSolo?
+                var shouldDrawParty = (nint)partyAddon != nint.Zero && partyAddon->AtkUnitBase.IsVisible;
                 if (shouldDrawParty) {
                     if (this.PartyList.Length == 0) {
-                        var user = this.Connection.Self;
-                        DrawIndicator(drawList, partyAddon, 0, user);
+                        var memberCount = InfoProxyCrossRealm.GetPartyMemberCount();
+                        if (memberCount == 0) {
+                            // solo
+                            var user = this.Connection.Self;
+                            this.DrawIndicator(drawList, partyAddon, 0, user);
+                        } else {
+                            // cross-world party
+                            for (var i = 0; i < memberCount; i++) {
+                                var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
+                                var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!, null);
+                                this.DrawIndicator(drawList, partyAddon, i, user);
+                            }
+                        }
                     } else {
-                        for (var i = 0; i < this.PartyList.Length; i++) {
-                            var partyMember = this.PartyList[i]!;
-                            // TODO: work out what to do with partyMember.World
-                            var user = this.XivToDiscord(partyMember.Name.TextValue, null);
-                            DrawIndicator(drawList, partyAddon, i, user);
+                        // regular party (or cross-world party in an instance, which works out the same)
+                        var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
+                        var partyMemberCount = agentHud->PartyMemberCount;
+                        var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList; // length 10
+                        for (var i = 0; i < partyMemberCount; i++) {
+                            var partyMember = partyMemberList[i];
+                            // TODO: look at partyMember.Object (and this.PartyList)
+                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!, null);
+                            this.DrawIndicator(drawList, partyAddon, i, user);
                         }
                     }
                 }
@@ -134,11 +171,14 @@ public sealed class Plugin: IDalamudPlugin {
         }
     }
 
-    private static unsafe void DrawIndicator(ImDrawListPtr drawList, AtkUnitBase* partyAddon, int idx, User? user) {
-        var nodePtr = (AtkComponentNode*)partyAddon->UldManager.NodeList[22 - idx];
-        var colNode = nodePtr->Component->UldManager.NodeList[17]; // the image node for the job icon
+    private unsafe void DrawIndicator(ImDrawListPtr drawList, AddonPartyList* partyAddon, int idx, User? user) {
+        var colNode = &partyAddon->PartyMember[idx].ClassJobIcon->AtkResNode;
+        if ((nint)colNode == nint.Zero) { // this seems like it's null sometimes? set up cwp via pf, exception on join
+            return;
+        }
+
         var indicatorStart = GetNodePosition(colNode) + IndicatorOffset;
-        var indicatorSize = new Vector2(5, colNode->Height) * partyAddon->Scale;
+        var indicatorSize = new Vector2(5, colNode->Height) * partyAddon->AtkUnitBase.Scale;
         var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
         var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
         drawList.AddRectFilled(indicatorMin, indicatorMax, GetColour(user));
