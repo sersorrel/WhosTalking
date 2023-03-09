@@ -23,9 +23,10 @@ public sealed class ConfigWindow: Window, IDisposable {
                 ImGui.TextUnformatted($"Authenticated as {self.Username}#{self.Discriminator}.");
             } else {
                 ImGui.Text("Connected, but not authenticated.");
+                ImGui.Text("(Maybe you're not in a voice call?)");
             }
         } else {
-            ImGui.Text("Discord not connected.");
+            ImGui.Text("Not connected to Discord.");
         }
     }
 }
