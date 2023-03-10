@@ -22,7 +22,6 @@ namespace WhosTalking;
 
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
-    private static Vector2 IndicatorOffset = new(-15, 0);
     internal DiscordConnection Connection;
     private Stack<Action> disposeActions = new();
     public WindowSystem WindowSystem = new("WhosTalking");
@@ -180,11 +179,11 @@ public sealed class Plugin: IDalamudPlugin {
             return;
         }
 
-        var indicatorStart = GetNodePosition(colNode) + IndicatorOffset;
-        var indicatorSize = new Vector2(5, colNode->Height) * partyAddon->AtkUnitBase.Scale;
+        var indicatorStart = GetNodePosition(colNode);
+        var indicatorSize = new Vector2(colNode->Width, colNode->Height) * partyAddon->AtkUnitBase.Scale;
         var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
         var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-        drawList.AddRectFilled(indicatorMin, indicatorMax, GetColour(user));
+        drawList.AddRect(indicatorMin, indicatorMax, GetColour(user), 7, ImDrawFlags.RoundCornersAll, 3);
     }
 
     private static unsafe Vector2 GetNodePosition(AtkResNode* node) {
