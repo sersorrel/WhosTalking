@@ -2,8 +2,10 @@
     "Author": "ash",
     "Name": "Who's Talking",
     "Punchline": "See Discord voice activity indicators directly on your party list.",
-    "Description": "Once installed, the plugin should Just Work, if you have Discord open! If you're talking to people whose Discord nickname doesn't match their character's name, check out the plugin settings.",
+    "Description": "Once installed, join a Discord voice channel and an XIV party, and have people put their character names in their Discord nicknames. You should get colourful rectangles just to the left of the party list: green for talking, blue for muted, red for deafened, and yellow for unknown name.\n\nIf stuff breaks, let me know - click Send Feedback (speech bubble icon) below this text.",
     "InternalName": "WhosTalking",
     "ApplicableVersion": "any",
-    "Tags": []
+    "Tags": [
+        "UI"
+    ]
 }

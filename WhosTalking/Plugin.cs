@@ -59,6 +59,9 @@ public sealed class Plugin: IDalamudPlugin {
 #if DEBUG
         this.MainWindow.IsOpen = true;
 #endif
+        if (pluginInterface.Reason == PluginLoadReason.Installer) {
+            this.ConfigWindow.IsOpen = true;
+        }
     }
 
     internal DalamudPluginInterface PluginInterface { get; init; }
