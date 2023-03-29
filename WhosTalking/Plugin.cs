@@ -9,6 +9,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
@@ -180,10 +181,18 @@ public sealed class Plugin: IDalamudPlugin {
         }
 
         var indicatorStart = GetNodePosition(colNode);
-        var indicatorSize = new Vector2(colNode->Width, colNode->Height) * partyAddon->AtkUnitBase.Scale;
+        var scale = partyAddon->AtkUnitBase.Scale;
+        var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
         var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
         var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-        drawList.AddRect(indicatorMin, indicatorMax, GetColour(user), 7, ImDrawFlags.RoundCornersAll, 3);
+        drawList.AddRect(
+            indicatorMin,
+            indicatorMax,
+            GetColour(user),
+            7 * scale,
+            ImDrawFlags.RoundCornersAll,
+            (3 * scale) - 1
+        );
     }
 
     private static unsafe Vector2 GetNodePosition(AtkResNode* node) {
