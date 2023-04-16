@@ -84,15 +84,18 @@ public sealed class MainWindow: Window, IDisposable {
             var proxy = module->GetInfoProxyById(InfoProxyId.Party);
             ImGui.TextUnformatted($"EntryCount = {proxy->EntryCount}");
             var proxyList = (InfoProxyCommonList*)proxy;
-            var characterArray = proxyList->Data;
-            var characterArraySpan = characterArray->EntriesSpan;
-            ImGui.TextUnformatted($"EntriesSpan->Length = {characterArraySpan.Length}");
-            for (var i = 0; i < 8 && i < characterArraySpan.Length; i++) {
-                fixed (byte* name = characterArraySpan[i].Name) {
-                    ImGui.TextUnformatted(
-                        $"EntriesSpan[{i}] = idx {characterArraySpan[i].DictIndex}, name {(name != null ? PtrToString(name, 20) : "(null)")}"
-                    );
+            ImGui.TextUnformatted($"proxyList DataSize = {proxyList->DataSize}");
+            ImGui.TextUnformatted($"proxyList DictSize = {proxyList->DictSize}");
+            for (uint i = 0; i < 8 && i < proxy->EntryCount; i++) {
+                var entry = proxyList->GetEntry(i);
+                if (entry == null) { // shouldn't happen, but just in case
+                    ImGui.TextUnformatted("null entry...");
+                    break;
                 }
+
+                ImGui.TextUnformatted(
+                    $"InfoProxyCommonList[{i}] = idx {entry->DictIndex}, name {(entry->Name != null ? PtrToString(entry->Name, 20) : "(null)")}"
+                );
             }
         }
 
