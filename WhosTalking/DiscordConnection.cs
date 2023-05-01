@@ -177,7 +177,8 @@ public class DiscordConnection {
         root.TryGetProperty("evt", out var evt);
         if (!(cmd.GetString() == "DISPATCH"
             && (evt.GetString() == "SPEAKING_START" || evt.GetString() == "SPEAKING_STOP"))) {
-            PluginLog.Log("got message: {message}", message);
+            var redacted = this.AccessToken != null ? message.ToString().Replace(this.AccessToken, "[token]") : message.ToString();
+            PluginLog.Debug("got message: {message}", redacted);
         }
 
         switch (cmd.GetString()) {
@@ -405,7 +406,7 @@ public class DiscordConnection {
     }
 
     private async void Authorize2(string authCode) {
-        PluginLog.Log("authorize, stage 2; auth code is {authCode}", authCode);
+        PluginLog.Log("authorize, stage 2");
         using var client = new HttpClient();
         var response = await client.PostAsync(
             new Uri("https://streamkit.discord.com/overlay/token"),
@@ -427,7 +428,7 @@ public class DiscordConnection {
     }
 
     private void Authenticate() {
-        PluginLog.Log("authenticate; token is {token}", this.AccessToken ?? "(null)");
+        PluginLog.Log("authenticate...");
         this.webSocket.Send(
             JsonSerializer.Serialize(
                 new {
