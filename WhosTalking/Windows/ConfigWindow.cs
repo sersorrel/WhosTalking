@@ -139,20 +139,21 @@ public sealed class ConfigWindow: Window, IDisposable {
                 }
             }
 
-            if (anyChanges) {
-                ImGui.TextColored(ImGuiColors.DalamudYellow, "Warning: you have unsaved changes.");
-            }
-
             var configInvalid = individualAssignments.Any(p => string.IsNullOrEmpty(p.DiscordId) || string.IsNullOrEmpty(p.CharacterName));
             configInvalid |= individualAssignments.Count != individualAssignments.Select(p => p.CharacterName).Distinct().Count();
+            if (!configInvalid && anyChanges) {
+                ImGui.TextColored(ImGuiColors.DalamudYellow, "Warning: you have unsaved changes.");
+            }
+            if (configInvalid) {
+                ImGui.TextColored(ImGuiColors.DalamudYellow, "The configuration is invalid." + Environment.NewLine
+                    + "  - All entries require to have a value" + Environment.NewLine
+                    + "  - Duplicate character names are not allowed");
+            }
+
             if (configInvalid || !anyChanges) {
                 ImGui.BeginDisabled();
-                if (configInvalid) {
-                    ImGui.TextColored(ImGuiColors.DalamudYellow, "The configuration is invalid." + Environment.NewLine
-                        + "  - All entries require to have a value" + Environment.NewLine
-                        + "  - Duplicate character names are not allowed");
-                }
             }
+
             if (ImGui.Button("Reset")) {
                 ResetListToConfig();
             }
