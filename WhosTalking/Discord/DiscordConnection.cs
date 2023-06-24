@@ -11,8 +11,8 @@ using Websocket.Client;
 namespace WhosTalking.Discord;
 
 public class DiscordConnection {
-    internal readonly Dictionary<string, User> AllUsers;
     private const string ClientId = "207646673902501888";
+    internal readonly Dictionary<string, User> AllUsers;
     private readonly Stack<Action> disposeActions = new();
     private readonly Plugin plugin;
     private readonly WebsocketClient webSocket;
@@ -39,6 +39,7 @@ public class DiscordConnection {
     }
 
     public bool IsConnected => this.webSocket.IsRunning;
+
     public User? Self {
         get {
             foreach (var pair in this.AllUsers) {
@@ -84,6 +85,7 @@ public class DiscordConnection {
             this.currentChannel = value;
         }
     }
+
     private string? AccessToken {
         get => this.plugin.Configuration.AccessToken;
         set {
@@ -161,8 +163,8 @@ public class DiscordConnection {
 
         if (info.Type == DisconnectionType.NoMessageReceived
             || info.Exception == null
-            || info.Exception?.InnerException is HttpRequestException e
-                && e.Message.StartsWith("Connection refused")) {
+            || (info.Exception?.InnerException is HttpRequestException e
+                && e.Message.StartsWith("Connection refused"))) {
             return;
         }
 
@@ -182,186 +184,48 @@ public class DiscordConnection {
         root.TryGetProperty("evt", out var evt);
         if (!(cmd.GetString() == "DISPATCH"
             && (evt.GetString() == "SPEAKING_START" || evt.GetString() == "SPEAKING_STOP"))) {
-            var redacted = this.AccessToken != null ? message.ToString().Replace(this.AccessToken, "[token]") : message.ToString();
+            var redacted = this.AccessToken != null
+                ? message.ToString().Replace(this.AccessToken, "[token]")
+                : message.ToString();
             PluginLog.Debug("got message: {message}", redacted);
         }
 
         switch (cmd.GetString()) {
             case "DISPATCH": {
-                    switch (evt.GetString()) {
-                        case "READY": {
-                                // connected, ready to do auth
-                                var version = root.GetProperty("data").GetProperty("v").GetInt64();
-                                if (version != 1) {
-                                    PluginLog.Warning("unexpected api version {version}", version);
-                                }
+                switch (evt.GetString()) {
+                    case "READY": {
+                        // connected, ready to do auth
+                        var version = root.GetProperty("data").GetProperty("v").GetInt64();
+                        if (version != 1) {
+                            PluginLog.Warning("unexpected api version {version}", version);
+                        }
 
-                                this.Authenticate();
-                                break;
-                            }
-                        case "VOICE_CHANNEL_SELECT": {
-                                // the client joins or leaves a voice channel
-                                // join: both guild and channel are set
-                                // leave: channel is null, guild is not present
-                                string? guild, channel;
-                                if (root.GetProperty("data").TryGetProperty("guild_id", out var guildElement)
-                                    && root.GetProperty("data").TryGetProperty("channel_id", out var channelElement)
-                                    && (guild = guildElement.GetString()) != null
-                                    && (channel = channelElement.GetString()) != null
-                                ) {
-                                    this.Channel = new DiscordChannel(guild, channel);
-                                } else {
-                                    this.Channel = null;
-                                    this.AllUsers.Clear();
-                                }
-
-                                break;
-                            }
-                        case "VOICE_STATE_CREATE":
-                        case "VOICE_STATE_UPDATE": {
-                                var data = root.GetProperty("data");
-                                var user = data.GetProperty("user");
-                                var voiceState = data.GetProperty("voice_state");
-                                var selfMuteElement = voiceState.GetProperty("self_mute");
-                                var muteElement = voiceState.GetProperty("mute");
-                                var suppressElement = voiceState.GetProperty("suppress");
-                                var selfDeafElement = voiceState.GetProperty("self_deaf");
-                                var deafElement = voiceState.GetProperty("deaf");
-                                var newUser = new User(
-                                    user.GetProperty("id").GetString()!,
-                                    user.GetProperty("username").GetString(),
-                                    user.GetProperty("discriminator").GetString(),
-                                    data.GetProperty("nick").GetString(),
-                                    selfMuteElement.ValueKind != JsonValueKind.Null
-                                        ? selfMuteElement.GetBoolean()
-                                        : muteElement.ValueKind != JsonValueKind.Null
-                                            ? muteElement.GetBoolean()
-                                            : suppressElement.ValueKind != JsonValueKind.Null
-                                                ? suppressElement.GetBoolean()
-                                                : null,
-                                    selfDeafElement.ValueKind != JsonValueKind.Null
-                                        ? selfDeafElement.GetBoolean()
-                                        : deafElement.ValueKind != JsonValueKind.Null
-                                            ? deafElement.GetBoolean()
-                                            : null
-                                );
-                                if (this.AllUsers.TryGetValue(newUser.UserId, out var existingUser)) {
-                                    existingUser.Update(newUser);
-                                } else {
-                                    this.AllUsers.Add(newUser.UserId, newUser);
-                                }
-
-                                if (evt.GetString() == "VOICE_STATE_CREATE" && newUser.UserId == this.userId) {
-                                    // we joined, and need to find out which room we're in
-                                    this.webSocket.Send(
-                                        JsonSerializer.Serialize(
-                                            new {
-                                                cmd = "GET_SELECTED_VOICE_CHANNEL",
-                                                nonce = Guid.NewGuid().ToString(),
-                                            }
-                                        )
-                                    );
-                                }
-
-                                break;
-                            }
-                        case "VOICE_STATE_DELETE": {
-                                var userId = root.GetProperty("data").GetProperty("user").GetProperty("id").GetString()!;
-                                this.AllUsers.Remove(userId);
-                                if (userId == this.userId) {
-                                    // we left, maybe by getting moved into another room
-                                    this.AllUsers.Clear();
-                                    this.webSocket.Send(
-                                        JsonSerializer.Serialize(
-                                            new {
-                                                cmd = "GET_SELECTED_VOICE_CHANNEL",
-                                                nonce = Guid.NewGuid().ToString(),
-                                            }
-                                        )
-                                    );
-                                }
-
-                                break;
-                            }
-                        case "SPEAKING_START": {
-                                var userId = root.GetProperty("data").GetProperty("user_id").GetString()!;
-                                if (this.AllUsers.TryGetValue(userId, out var user)) {
-                                    user.Speaking = true;
-                                } else {
-                                    PluginLog.Warning("got SPEAKING_START for unknown user {id}", userId);
-                                }
-
-                                break;
-                            }
-                        case "SPEAKING_STOP": {
-                                var userId = root.GetProperty("data").GetProperty("user_id").GetString()!;
-                                if (this.AllUsers.TryGetValue(userId, out var user)) {
-                                    user.Speaking = false;
-                                } else {
-                                    PluginLog.Warning("got SPEAKING_STOP for unknown user {id}", userId);
-                                }
-
-                                break;
-                            }
-                    }
-
-                    break;
-                }
-            case "AUTHENTICATE": {
-                    switch (evt.GetString()) {
-                        case "ERROR": {
-                                this.AccessToken = null;
-                                this.AllUsers.Clear();
-                                this.Authorize1();
-                                break;
-                            }
-                        default: {
-                                var user = root.GetProperty("data").GetProperty("user");
-                                this.userId = user.GetProperty("id").GetString();
-                                // TODO: store username/discriminator/display_name somewhere
-                                // but! they must be kept up-to-date!
-                                this.Subscribe("VOICE_CHANNEL_SELECT");
-                                this.webSocket.Send(
-                                    JsonSerializer.Serialize(
-                                        new {
-                                            cmd = "GET_SELECTED_VOICE_CHANNEL",
-                                            nonce = Guid.NewGuid().ToString(),
-                                        }
-                                    )
-                                );
-                                break;
-                            }
-                    }
-
-                    break;
-                }
-            case "AUTHORIZE": {
-                    this.Authorize2(root.GetProperty("data").GetProperty("code").GetString()!);
-                    break;
-                }
-            case "GET_SELECTED_VOICE_CHANNEL": {
-                    var data = root.GetProperty("data");
-                    if (data.ValueKind == JsonValueKind.Null) {
-                        this.Channel = null;
-                        this.AllUsers.Clear();
+                        this.Authenticate();
                         break;
                     }
+                    case "VOICE_CHANNEL_SELECT": {
+                        // the client joins or leaves a voice channel
+                        // join: both guild and channel are set
+                        // leave: channel is null, guild is not present
+                        string? guild, channel;
+                        if (root.GetProperty("data").TryGetProperty("guild_id", out var guildElement)
+                            && root.GetProperty("data").TryGetProperty("channel_id", out var channelElement)
+                            && (guild = guildElement.GetString()) != null
+                            && (channel = channelElement.GetString()) != null
+                        ) {
+                            this.Channel = new DiscordChannel(guild, channel);
+                        } else {
+                            this.Channel = null;
+                            this.AllUsers.Clear();
+                        }
 
-                    string? guild, channel;
-                    if (data.TryGetProperty("guild_id", out var guildElement)
-                        && data.TryGetProperty("id", out var channelElement)
-                        && (guild = guildElement.GetString()) != null
-                        && (channel = channelElement.GetString()) != null
-                    ) {
-                        this.Channel = new DiscordChannel(guild, channel);
-                    } else {
-                        this.Channel = null;
+                        break;
                     }
-
-                    this.AllUsers.Clear();
-                    foreach (var record in data.GetProperty("voice_states").EnumerateArray()) {
-                        var user = record.GetProperty("user");
-                        var voiceState = record.GetProperty("voice_state");
+                    case "VOICE_STATE_CREATE":
+                    case "VOICE_STATE_UPDATE": {
+                        var data = root.GetProperty("data");
+                        var user = data.GetProperty("user");
+                        var voiceState = data.GetProperty("voice_state");
                         var selfMuteElement = voiceState.GetProperty("self_mute");
                         var muteElement = voiceState.GetProperty("mute");
                         var suppressElement = voiceState.GetProperty("suppress");
@@ -371,7 +235,7 @@ public class DiscordConnection {
                             user.GetProperty("id").GetString()!,
                             user.GetProperty("username").GetString(),
                             user.GetProperty("discriminator").GetString(),
-                            record.GetProperty("nick").GetString(),
+                            data.GetProperty("nick").GetString(),
                             selfMuteElement.ValueKind != JsonValueKind.Null
                                 ? selfMuteElement.GetBoolean()
                                 : muteElement.ValueKind != JsonValueKind.Null
@@ -385,16 +249,156 @@ public class DiscordConnection {
                                     ? deafElement.GetBoolean()
                                     : null
                         );
-                        this.AllUsers.Add(newUser.UserId, newUser);
-                    }
+                        if (this.AllUsers.TryGetValue(newUser.UserId, out var existingUser)) {
+                            existingUser.Update(newUser);
+                        } else {
+                            this.AllUsers.Add(newUser.UserId, newUser);
+                        }
 
+                        if (evt.GetString() == "VOICE_STATE_CREATE" && newUser.UserId == this.userId) {
+                            // we joined, and need to find out which room we're in
+                            this.webSocket.Send(
+                                JsonSerializer.Serialize(
+                                    new {
+                                        cmd = "GET_SELECTED_VOICE_CHANNEL",
+                                        nonce = Guid.NewGuid().ToString(),
+                                    }
+                                )
+                            );
+                        }
+
+                        break;
+                    }
+                    case "VOICE_STATE_DELETE": {
+                        var userId = root.GetProperty("data").GetProperty("user").GetProperty("id").GetString()!;
+                        this.AllUsers.Remove(userId);
+                        if (userId == this.userId) {
+                            // we left, maybe by getting moved into another room
+                            this.AllUsers.Clear();
+                            this.webSocket.Send(
+                                JsonSerializer.Serialize(
+                                    new {
+                                        cmd = "GET_SELECTED_VOICE_CHANNEL",
+                                        nonce = Guid.NewGuid().ToString(),
+                                    }
+                                )
+                            );
+                        }
+
+                        break;
+                    }
+                    case "SPEAKING_START": {
+                        var userId = root.GetProperty("data").GetProperty("user_id").GetString()!;
+                        if (this.AllUsers.TryGetValue(userId, out var user)) {
+                            user.Speaking = true;
+                        } else {
+                            PluginLog.Warning("got SPEAKING_START for unknown user {id}", userId);
+                        }
+
+                        break;
+                    }
+                    case "SPEAKING_STOP": {
+                        var userId = root.GetProperty("data").GetProperty("user_id").GetString()!;
+                        if (this.AllUsers.TryGetValue(userId, out var user)) {
+                            user.Speaking = false;
+                        } else {
+                            PluginLog.Warning("got SPEAKING_STOP for unknown user {id}", userId);
+                        }
+
+                        break;
+                    }
+                }
+
+                break;
+            }
+            case "AUTHENTICATE": {
+                switch (evt.GetString()) {
+                    case "ERROR": {
+                        this.AccessToken = null;
+                        this.AllUsers.Clear();
+                        this.Authorize1();
+                        break;
+                    }
+                    default: {
+                        var user = root.GetProperty("data").GetProperty("user");
+                        this.userId = user.GetProperty("id").GetString();
+                        // TODO: store username/discriminator/display_name somewhere
+                        // but! they must be kept up-to-date!
+                        this.Subscribe("VOICE_CHANNEL_SELECT");
+                        this.webSocket.Send(
+                            JsonSerializer.Serialize(
+                                new {
+                                    cmd = "GET_SELECTED_VOICE_CHANNEL",
+                                    nonce = Guid.NewGuid().ToString(),
+                                }
+                            )
+                        );
+                        break;
+                    }
+                }
+
+                break;
+            }
+            case "AUTHORIZE": {
+                this.Authorize2(root.GetProperty("data").GetProperty("code").GetString()!);
+                break;
+            }
+            case "GET_SELECTED_VOICE_CHANNEL": {
+                var data = root.GetProperty("data");
+                if (data.ValueKind == JsonValueKind.Null) {
+                    this.Channel = null;
+                    this.AllUsers.Clear();
                     break;
                 }
+
+                string? guild, channel;
+                if (data.TryGetProperty("guild_id", out var guildElement)
+                    && data.TryGetProperty("id", out var channelElement)
+                    && (guild = guildElement.GetString()) != null
+                    && (channel = channelElement.GetString()) != null
+                ) {
+                    this.Channel = new DiscordChannel(guild, channel);
+                } else {
+                    this.Channel = null;
+                }
+
+                this.AllUsers.Clear();
+                foreach (var record in data.GetProperty("voice_states").EnumerateArray()) {
+                    var user = record.GetProperty("user");
+                    var voiceState = record.GetProperty("voice_state");
+                    var selfMuteElement = voiceState.GetProperty("self_mute");
+                    var muteElement = voiceState.GetProperty("mute");
+                    var suppressElement = voiceState.GetProperty("suppress");
+                    var selfDeafElement = voiceState.GetProperty("self_deaf");
+                    var deafElement = voiceState.GetProperty("deaf");
+                    var newUser = new User(
+                        user.GetProperty("id").GetString()!,
+                        user.GetProperty("username").GetString(),
+                        user.GetProperty("discriminator").GetString(),
+                        record.GetProperty("nick").GetString(),
+                        selfMuteElement.ValueKind != JsonValueKind.Null
+                            ? selfMuteElement.GetBoolean()
+                            : muteElement.ValueKind != JsonValueKind.Null
+                                ? muteElement.GetBoolean()
+                                : suppressElement.ValueKind != JsonValueKind.Null
+                                    ? suppressElement.GetBoolean()
+                                    : null,
+                        selfDeafElement.ValueKind != JsonValueKind.Null
+                            ? selfDeafElement.GetBoolean()
+                            : deafElement.ValueKind != JsonValueKind.Null
+                                ? deafElement.GetBoolean()
+                                : null
+                    );
+                    this.AllUsers.Add(newUser.UserId, newUser);
+                }
+
+                break;
+            }
         }
     }
 
     private void Subscribe(string evt) {
-        this.Subscribe(evt, new { });
+        this.Subscribe(evt, new {});
     }
 
     private void Subscribe(string evt, object args) {
@@ -411,7 +415,7 @@ public class DiscordConnection {
     }
 
     private void Unsubscribe(string evt) {
-        this.Unsubscribe(evt, new { });
+        this.Unsubscribe(evt, new {});
     }
 
     private void Unsubscribe(string evt, object args) {

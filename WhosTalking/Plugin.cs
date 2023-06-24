@@ -23,9 +23,9 @@ namespace WhosTalking;
 
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
-    public WindowSystem WindowSystem = new("WhosTalking");
     internal DiscordConnection Connection;
     private Stack<Action> disposeActions = new();
+    public WindowSystem WindowSystem = new("WhosTalking");
 
     public Plugin(
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -65,12 +65,12 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     public Configuration Configuration { get; init; }
-    public string Name => "Who's Talking";
     internal ConfigWindow ConfigWindow { get; init; }
     internal GameGui GameGui { get; init; }
     internal MainWindow MainWindow { get; init; }
     internal PartyList PartyList { get; init; }
     internal DalamudPluginInterface PluginInterface { get; init; }
+    public string Name => "Who's Talking";
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
@@ -195,8 +195,7 @@ public sealed class Plugin: IDalamudPlugin {
                         }
                     }
                 }
-            }
-            finally {
+            } finally {
                 ImGui.PopClipRect();
                 ImGui.End();
             }
@@ -207,7 +206,7 @@ public sealed class Plugin: IDalamudPlugin {
         foreach (var user in this.Connection.AllUsers.Values) {
             var discordId = user.UserId;
 
-            foreach (var individualEntry in Configuration.IndividualAssignments) {
+            foreach (var individualEntry in this.Configuration.IndividualAssignments) {
                 if (individualEntry.CharacterName == name && individualEntry.DiscordId == discordId) {
                     return user;
                 }

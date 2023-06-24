@@ -7,7 +7,6 @@ namespace WhosTalking;
 
 [Serializable]
 public sealed class Configuration: IPluginConfiguration {
-
     // the below exist just to make saving less cumbersome
     [NonSerialized]
     private DalamudPluginInterface? pluginInterface;

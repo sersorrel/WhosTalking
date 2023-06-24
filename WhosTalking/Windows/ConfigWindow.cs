@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.Linq;
-using System.Reflection.PortableExecutable;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using ImGuiNET;
 
 namespace WhosTalking.Windows;
@@ -14,17 +11,16 @@ public sealed class ConfigWindow: Window, IDisposable {
     private readonly List<AssignmentEntry> individualAssignments;
     private readonly Plugin plugin;
 
-    public ConfigWindow(Plugin plugin) : base(
+    public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
         ImGuiWindowFlags.AlwaysAutoResize
     ) {
         this.plugin = plugin;
-        individualAssignments = new();
-        ResetListToConfig();
+        this.individualAssignments = new List<AssignmentEntry>();
+        this.ResetListToConfig();
     }
 
-    public void Dispose() {
-    }
+    public void Dispose() {}
 
     public override void Draw() {
         ImGui.Text("Thanks for trying Who's Talking!");
@@ -88,66 +84,90 @@ public sealed class ConfigWindow: Window, IDisposable {
         ImGui.Separator();
 
         if (ImGui.TreeNode("Advanced Individual Assignments")) {
-            ImGui.BulletText("Note: the Discord User ID is the unique User ID, it is not the Discord username." + Environment.NewLine +
-                "To obtain the User ID you need to go to Discord Settings -> Advanced and enable Developer Mode." + Environment.NewLine +
-                "Then right click a user and select \"Copy User ID\".");
+            ImGui.BulletText(
+                "Note: the Discord User ID is the unique User ID, it is not the Discord username."
+                + Environment.NewLine
+                + "To obtain the User ID you need to go to Discord Settings -> Advanced and enable Developer Mode."
+                + Environment.NewLine
+                + "Then right click a user and select \"Copy User ID\"."
+            );
             if (ImGui.BeginTable("AssignmentTable", 3)) {
                 ImGui.TableSetupColumn("Character Name");
                 ImGui.TableSetupColumn("Discord User ID");
                 ImGui.TableSetupColumn("Commands");
                 ImGui.TableHeadersRow();
                 ImGui.TableNextRow();
-                for (int i = 0; i < individualAssignments.Count; i++) {
+                for (var i = 0; i < this.individualAssignments.Count; i++) {
                     ImGui.TableNextColumn();
-                    var charaName = individualAssignments[i].CharacterName;
+                    var charaName = this.individualAssignments[i].CharacterName;
                     ImGui.SetNextItemWidth(150);
                     if (ImGui.InputText("###nameEntry" + i, ref charaName, 255)) {
-                        individualAssignments[i].CharacterName = charaName;
+                        this.individualAssignments[i].CharacterName = charaName;
                     }
+
                     ImGui.TableNextColumn();
                     ImGui.SetNextItemWidth(200);
-                    var discordId = individualAssignments[i].DiscordId;
+                    var discordId = this.individualAssignments[i].DiscordId;
                     if (ImGui.InputText("###discordIdEntry" + i, ref discordId, 255)) {
-                        individualAssignments[i].DiscordId = discordId;
+                        this.individualAssignments[i].DiscordId = discordId;
                     }
+
                     ImGui.TableNextColumn();
                     if (ImGui.Button("Delete###deleteEntry" + i)) {
-                        individualAssignments.RemoveAt(i);
+                        this.individualAssignments.RemoveAt(i);
                     }
                 }
+
                 ImGui.EndTable();
             }
+
             if (ImGui.Button("Add new Assignment")) {
-                individualAssignments.Add(new());
+                this.individualAssignments.Add(new AssignmentEntry());
             }
 
-            bool anyChanges = false;
-            if (individualAssignments.Count != plugin.Configuration.IndividualAssignments.Count) {
+            var anyChanges = false;
+            if (this.individualAssignments.Count != this.plugin.Configuration.IndividualAssignments.Count) {
                 anyChanges = true;
             }
 
             if (!anyChanges) {
-                for (int i = 0; i < individualAssignments.Count; i++) {
-                    if (!string.Equals(individualAssignments[i].CharacterName, plugin.Configuration.IndividualAssignments[i].CharacterName)) {
+                for (var i = 0; i < this.individualAssignments.Count; i++) {
+                    if (!string.Equals(
+                            this.individualAssignments[i].CharacterName,
+                            this.plugin.Configuration.IndividualAssignments[i].CharacterName
+                        )) {
                         anyChanges = true;
                         break;
                     }
-                    if (!string.Equals(individualAssignments[i].DiscordId, plugin.Configuration.IndividualAssignments[i].DiscordId)) {
+
+                    if (!string.Equals(
+                            this.individualAssignments[i].DiscordId,
+                            this.plugin.Configuration.IndividualAssignments[i].DiscordId
+                        )) {
                         anyChanges = true;
                         break;
                     }
                 }
             }
 
-            var configInvalid = individualAssignments.Any(p => string.IsNullOrEmpty(p.DiscordId) || string.IsNullOrEmpty(p.CharacterName));
-            configInvalid |= individualAssignments.Count != individualAssignments.Select(p => p.CharacterName).Distinct().Count();
+            var configInvalid = this.individualAssignments.Any(
+                p => string.IsNullOrEmpty(p.DiscordId) || string.IsNullOrEmpty(p.CharacterName)
+            );
+            configInvalid |= this.individualAssignments.Count
+                != this.individualAssignments.Select(p => p.CharacterName).Distinct().Count();
             if (!configInvalid && anyChanges) {
                 ImGui.TextColored(ImGuiColors.DalamudYellow, "Warning: you have unsaved changes.");
             }
+
             if (configInvalid) {
-                ImGui.TextColored(ImGuiColors.DalamudYellow, "The configuration is invalid." + Environment.NewLine
-                    + "  - All entries require to have a value" + Environment.NewLine
-                    + "  - Duplicate character names are not allowed");
+                ImGui.TextColored(
+                    ImGuiColors.DalamudYellow,
+                    "The configuration is invalid."
+                    + Environment.NewLine
+                    + "  - All entries require to have a value"
+                    + Environment.NewLine
+                    + "  - Duplicate character names are not allowed"
+                );
             }
 
             if (configInvalid || !anyChanges) {
@@ -155,8 +175,9 @@ public sealed class ConfigWindow: Window, IDisposable {
             }
 
             if (ImGui.Button("Reset")) {
-                ResetListToConfig();
+                this.ResetListToConfig();
             }
+
             if (ImGui.IsItemHovered()) {
                 ImGui.BeginTooltip();
                 ImGui.Text("Resets the configuration to the last saved state");
@@ -166,29 +187,37 @@ public sealed class ConfigWindow: Window, IDisposable {
             ImGui.SameLine();
 
             if (ImGui.Button("Save")) {
-                plugin.Configuration.IndividualAssignments.Clear();
-                foreach (var entry in individualAssignments) {
-                    plugin.Configuration.IndividualAssignments.Add(new() {
-                        CharacterName = entry.CharacterName,
-                        DiscordId = entry.DiscordId,
-                    });
+                this.plugin.Configuration.IndividualAssignments.Clear();
+                foreach (var entry in this.individualAssignments) {
+                    this.plugin.Configuration.IndividualAssignments.Add(
+                        new AssignmentEntry {
+                            CharacterName = entry.CharacterName,
+                            DiscordId = entry.DiscordId,
+                        }
+                    );
                 }
-                plugin.Configuration.Save();
+
+                this.plugin.Configuration.Save();
                 anyChanges = false;
             }
-            if (configInvalid || !anyChanges) ImGui.EndDisabled();
+
+            if (configInvalid || !anyChanges) {
+                ImGui.EndDisabled();
+            }
 
             ImGui.TreePop();
         }
     }
 
     private void ResetListToConfig() {
-        individualAssignments.Clear();
-        foreach (var entry in plugin.Configuration.IndividualAssignments) {
-            individualAssignments.Add(new() {
-                CharacterName = entry.CharacterName,
-                DiscordId = entry.DiscordId,
-            });
+        this.individualAssignments.Clear();
+        foreach (var entry in this.plugin.Configuration.IndividualAssignments) {
+            this.individualAssignments.Add(
+                new AssignmentEntry {
+                    CharacterName = entry.CharacterName,
+                    DiscordId = entry.DiscordId,
+                }
+            );
         }
     }
 }
