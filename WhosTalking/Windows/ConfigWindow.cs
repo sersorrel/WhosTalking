@@ -74,11 +74,11 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         if (this.plugin.PluginInterface.IsDev || this.plugin.PluginInterface.IsTesting) {
-            ImGui.Text("Hello, tester! Please ping me (Ash#6256) with any issues you find :)");
+            ImGui.Text("Hello, tester! Please ping me (sersorrel) with any issues you find :)");
         }
 
         if (this.plugin.PluginInterface.IsDev || !this.plugin.PluginInterface.IsTesting) {
-            ImGui.Text("If you report issues on Discord, ping me (Ash#6256) or I will not see your message!");
+            ImGui.Text("If you report issues on Discord, ping me (sersorrel) or I will not see your message!");
         }
 
         ImGui.Separator();
