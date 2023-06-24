@@ -16,15 +16,16 @@ using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using JetBrains.Annotations;
+using WhosTalking.Discord;
 using WhosTalking.Windows;
 
 namespace WhosTalking;
 
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
+    public WindowSystem WindowSystem = new("WhosTalking");
     internal DiscordConnection Connection;
     private Stack<Action> disposeActions = new();
-    public WindowSystem WindowSystem = new("WhosTalking");
 
     public Plugin(
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -63,14 +64,13 @@ public sealed class Plugin: IDalamudPlugin {
         }
     }
 
-    internal DalamudPluginInterface PluginInterface { get; init; }
-    internal GameGui GameGui { get; init; }
-    internal PartyList PartyList { get; init; }
     public Configuration Configuration { get; init; }
-
-    internal ConfigWindow ConfigWindow { get; init; }
-    internal MainWindow MainWindow { get; init; }
     public string Name => "Who's Talking";
+    internal ConfigWindow ConfigWindow { get; init; }
+    internal GameGui GameGui { get; init; }
+    internal MainWindow MainWindow { get; init; }
+    internal PartyList PartyList { get; init; }
+    internal DalamudPluginInterface PluginInterface { get; init; }
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
@@ -78,33 +78,41 @@ public sealed class Plugin: IDalamudPlugin {
         }
     }
 
-    private User? XivToDiscord(string name, string? world) {
-        foreach (var user in this.Connection.AllUsers.Values) {
-            var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
-            if (discordName == null) {
-                continue;
-            }
+    public void OpenConfigUi() {
+        this.ConfigWindow.IsOpen = true;
+    }
 
-            if (discordName == name || discordName.ToLowerInvariant().Contains(name.ToLowerInvariant())) {
-                return user;
-            }
+    private static uint GetColour(User? user) {
+        // colours are ABGR
+        if (user == null) {
+            return 0xFF00FFFF; // yellow
         }
 
-        foreach (var user in this.Connection.AllUsers.Values) {
-            var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
-            if (discordName == null) {
-                continue;
-            }
-
-            var split = name.Split(' ');
-            discordName = discordName.ToLowerInvariant();
-            if (discordName.Contains(split[0].ToLowerInvariant())
-                || discordName.Contains(split[1].ToLowerInvariant())) {
-                return user;
-            }
+        if (user.Speaking.GetValueOrDefault()) {
+            return 0xFF00FF00; // green
         }
 
-        return null;
+        if (user.Deafened.GetValueOrDefault()) {
+            return 0xFF0000FF; // red
+        }
+
+        if (user.Muted.GetValueOrDefault()) {
+            return 0xFF808000; // blue
+        }
+
+        return 0;
+    }
+
+    private static unsafe Vector2 GetNodePosition(AtkResNode* node) {
+        var pos = new Vector2(node->X, node->Y);
+        var par = node->ParentNode;
+        while (par != null) {
+            pos *= new Vector2(par->ScaleX, par->ScaleY);
+            pos += new Vector2(par->X, par->Y);
+            par = par->ParentNode;
+        }
+
+        return pos;
     }
 
     private void Draw() {
@@ -112,6 +120,27 @@ public sealed class Plugin: IDalamudPlugin {
         if (this.Connection?.Self != null) {
             this.DrawOverlay();
         }
+    }
+
+    private unsafe void DrawIndicator(ImDrawListPtr drawList, AddonPartyList* partyAddon, int idx, User? user) {
+        var colNode = &partyAddon->PartyMember[idx].ClassJobIcon->AtkResNode;
+        if ((nint)colNode == nint.Zero) { // this seems like it's null sometimes? set up cwp via pf, exception on join
+            return;
+        }
+
+        var indicatorStart = GetNodePosition(colNode);
+        var scale = partyAddon->AtkUnitBase.Scale;
+        var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
+        var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
+        var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
+        drawList.AddRect(
+            indicatorMin,
+            indicatorMax,
+            GetColour(user),
+            7 * scale,
+            ImDrawFlags.RoundCornersAll,
+            (3 * scale) - 1
+        );
     }
 
     private unsafe void DrawOverlay() {
@@ -166,68 +195,41 @@ public sealed class Plugin: IDalamudPlugin {
                         }
                     }
                 }
-            } finally {
+            }
+            finally {
                 ImGui.PopClipRect();
                 ImGui.End();
             }
         }
     }
 
-    private unsafe void DrawIndicator(ImDrawListPtr drawList, AddonPartyList* partyAddon, int idx, User? user) {
-        var colNode = &partyAddon->PartyMember[idx].ClassJobIcon->AtkResNode;
-        if ((nint)colNode == nint.Zero) { // this seems like it's null sometimes? set up cwp via pf, exception on join
-            return;
+    private User? XivToDiscord(string name, string? world) {
+        foreach (var user in this.Connection.AllUsers.Values) {
+            var discordId = user.UserId;
+
+            foreach (var individualEntry in Configuration.IndividualAssignments) {
+                if (individualEntry.CharacterName == name && individualEntry.DiscordId == discordId) {
+                    return user;
+                }
+            }
+
+            var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
+            if (discordName == null) {
+                continue;
+            }
+
+            if (discordName == name || discordName.ToLowerInvariant().Contains(name.ToLowerInvariant())) {
+                return user;
+            }
+
+            var split = name.Split(' ');
+            discordName = discordName.ToLowerInvariant();
+            if (discordName.Contains(split[0].ToLowerInvariant())
+                || discordName.Contains(split[1].ToLowerInvariant())) {
+                return user;
+            }
         }
 
-        var indicatorStart = GetNodePosition(colNode);
-        var scale = partyAddon->AtkUnitBase.Scale;
-        var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
-        var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
-        var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-        drawList.AddRect(
-            indicatorMin,
-            indicatorMax,
-            GetColour(user),
-            7 * scale,
-            ImDrawFlags.RoundCornersAll,
-            (3 * scale) - 1
-        );
-    }
-
-    private static unsafe Vector2 GetNodePosition(AtkResNode* node) {
-        var pos = new Vector2(node->X, node->Y);
-        var par = node->ParentNode;
-        while (par != null) {
-            pos *= new Vector2(par->ScaleX, par->ScaleY);
-            pos += new Vector2(par->X, par->Y);
-            par = par->ParentNode;
-        }
-
-        return pos;
-    }
-
-    private static uint GetColour(User? user) {
-        // colours are ABGR
-        if (user == null) {
-            return 0xFF00FFFF; // yellow
-        }
-
-        if (user.Speaking.GetValueOrDefault()) {
-            return 0xFF00FF00; // green
-        }
-
-        if (user.Deafened.GetValueOrDefault()) {
-            return 0xFF0000FF; // red
-        }
-
-        if (user.Muted.GetValueOrDefault()) {
-            return 0xFF808000; // blue
-        }
-
-        return 0;
-    }
-
-    public void OpenConfigUi() {
-        this.ConfigWindow.IsOpen = true;
+        return null;
     }
 }

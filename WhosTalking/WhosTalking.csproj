@@ -31,9 +31,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.10"/>
-        <PackageReference Include="JetBrains.Annotations" Version="2022.3.1"/>
-        <PackageReference Include="Websocket.Client" Version="4.6.1"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.10" />
+        <PackageReference Include="JetBrains.Annotations" Version="2022.3.1" />
+        <PackageReference Include="Websocket.Client" Version="4.6.1" />
         <Reference Include="FFXIVClientStructs">
             <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
             <Private>false</Private>
