@@ -222,6 +222,10 @@ public sealed class Plugin: IDalamudPlugin {
             }
 
             var split = name.Split(' ');
+            if (split.Length != 2) {
+                // e.g. your chocobo (and also just "everything probably" when ClientStructs is out of date post-patch)
+                return null;
+            }
             discordName = discordName.ToLowerInvariant();
             if (discordName.Contains(split[0].ToLowerInvariant())
                 || discordName.Contains(split[1].ToLowerInvariant())) {
