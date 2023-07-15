@@ -188,6 +188,10 @@ public sealed class Plugin: IDalamudPlugin {
                         var partyMemberCount = agentHud->PartyMemberCount;
                         var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList; // length 10
                         for (var i = 0; i < partyMemberCount; i++) {
+                            // Check if party member in the list is a chocobo and not a player then continue.
+                            if (partyMemberList[i].Object->Character.CharacterData.ModelCharaId == 0x1) {
+                                continue;
+                            }
                             var partyMember = partyMemberList[i];
                             // TODO: look at partyMember.Object (and this.PartyList)
                             var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!, null);
