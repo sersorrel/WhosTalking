@@ -4,6 +4,7 @@ using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
@@ -34,6 +35,37 @@ public sealed class MainWindow: Window, IDisposable {
 
     public override unsafe void Draw() {
         ImGui.TextUnformatted($"Current channel: {this.plugin.Connection.Channel?.Channel}");
+
+        ImGui.Text("GroupManager party");
+        foreach (var member in GroupManager.Instance()->PartyMembersSpan) {
+            ImGui.TextUnformatted($"{*member.Name} {member.X}");
+        }
+
+        ImGui.Text("GroupManager alliance");
+        // foreach (var member in GroupManager.Instance()->AllianceMembersSpan) {
+        //     // ImGui.TextUnformatted($"{(member.Name != (byte*)nint.Zero ? *member.Name : "(null)")}");
+        //     ImGui.TextUnformatted($"{*member.Name} {member.X}");
+        // }
+        for (var group = 0; group < 6; group++) {
+            for (var idx = 0; idx < 8; idx++) {
+                var partyMember = GroupManager.Instance()->GetAllianceMemberByGroupAndIndex(group, idx);
+                if (partyMember == null) {
+                    continue;
+                }
+
+                var name = partyMember->Name != null ? PtrToString(partyMember->Name, 20) : "(null)";
+                ImGui.TextUnformatted($"[{group}][{idx}] = {name}");
+            }
+        }
+
+        ImGui.TextUnformatted($"[0] idx {InfoProxyCrossRealm.GetGroupIndex(0)}");
+        ImGui.TextUnformatted($"[1] idx {InfoProxyCrossRealm.GetGroupIndex(1)}");
+        ImGui.TextUnformatted($"[2] idx {InfoProxyCrossRealm.GetGroupIndex(2)}");
+        ImGui.TextUnformatted($"[0] members {InfoProxyCrossRealm.GetGroupMemberCount(0)}");
+        ImGui.TextUnformatted($"[1] members {InfoProxyCrossRealm.GetGroupMemberCount(1)}");
+        ImGui.TextUnformatted($"[2] members {InfoProxyCrossRealm.GetGroupMemberCount(2)}");
+        ImGui.TextUnformatted($"partymembercount {InfoProxyCrossRealm.GetPartyMemberCount()}");
+        ImGui.TextUnformatted($"groupcount {InfoProxyCrossRealm.Instance()->GroupCount}");
 
         ImGui.Text($"Party (size {this.plugin.PartyList.Length}):");
         foreach (var partyMember in this.plugin.PartyList) {
@@ -94,7 +126,7 @@ public sealed class MainWindow: Window, IDisposable {
                 }
 
                 ImGui.TextUnformatted(
-                    $"InfoProxyCommonList[{i}] = idx {entry->DictIndex}, name {(entry->Name != null ? PtrToString(entry->Name, 20) : "(null)")}"
+                    $"InfoProxyCommonList[{i}] = idx {entry->DictIndex}, {(entry->Index == null ? "null" : "not null")}, name {(entry->Name != null ? PtrToString(entry->Name, 20) : "(null)")}"
                 );
             }
         }
