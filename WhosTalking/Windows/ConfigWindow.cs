@@ -40,6 +40,25 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         ImGui.Separator();
+        var nonXivUsersDisplayMode = (int)this.plugin.Configuration.NonXivUsersDisplayMode;
+        var nonXivUsersDisplayModes = Enum.GetValues(typeof(NonXivUsersDisplayMode))
+            .Cast<NonXivUsersDisplayMode>()
+            .Select(val => val.ToString())
+            .ToArray();
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text("List speaking Discord users not in your party:");
+        ImGui.SameLine();
+        if (ImGui.Combo(
+                "###nonXivUsersDisplayMode",
+                ref nonXivUsersDisplayMode,
+                nonXivUsersDisplayModes,
+                nonXivUsersDisplayModes.Length
+            )) {
+            this.plugin.Configuration.NonXivUsersDisplayMode = (NonXivUsersDisplayMode)nonXivUsersDisplayMode;
+            this.plugin.Configuration.Save();
+        }
+
+        ImGui.Separator();
         ImGui.Text("Potential issues:");
         ImGui.BulletText(
             "“I get yellow boxes instead of voice activity indicators...”"

@@ -11,6 +11,7 @@ using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
 using Dalamud.Utility;
+using Dalamud.Utility.Numerics;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -123,7 +124,7 @@ public sealed class Plugin: IDalamudPlugin {
 
     private void Draw() {
         this.WindowSystem.Draw();
-        if (this.Connection?.Self != null) {
+        if (this.Connection?.Self != null || this.ConfigWindow.IsOpen) {
             this.DrawOverlay();
         }
     }
@@ -189,6 +190,7 @@ public sealed class Plugin: IDalamudPlugin {
                 | ImGuiWindowFlags.NoNav
             )) {
             try {
+                var knownUsers = new HashSet<User>();
                 ImGui.PushClipRect(
                     ImGui.GetMainViewport().Pos,
                     ImGui.GetMainViewport().Pos + ImGui.GetMainViewport().Size,
@@ -213,6 +215,7 @@ public sealed class Plugin: IDalamudPlugin {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
                             var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!, null);
                             this.DrawIndicator(drawList, partyAddon, i, user);
+                            knownUsers.Add(user!);
                         }
                     } else {
                         var memberCount = InfoProxyCrossRealm.GetPartyMemberCount();
@@ -220,6 +223,7 @@ public sealed class Plugin: IDalamudPlugin {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
                             var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!, null);
                             this.DrawIndicator(drawList, partyAddon, i, user);
+                            knownUsers.Add(user!);
                         }
                     }
 
@@ -230,6 +234,7 @@ public sealed class Plugin: IDalamudPlugin {
                         // only enter solo mode if not in (or in a PF for) an alliance raid
                         // actually: only enter solo mode if nobody's in *our* full party AND there are no cross-realm shenanigans afoot
                         this.DrawIndicator(drawList, partyAddon, 0, this.Connection.Self);
+                        knownUsers.Add(this.Connection.Self!);
                     }
 
                     if (this.PartyList.Length > 0) {
@@ -242,6 +247,7 @@ public sealed class Plugin: IDalamudPlugin {
                             // TODO: look at partyMember.Object (and this.PartyList)
                             var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!, null);
                             this.DrawIndicator(drawList, partyAddon, i, user);
+                            knownUsers.Add(user!);
                         }
                     }
 
@@ -309,9 +315,11 @@ public sealed class Plugin: IDalamudPlugin {
                                 if (allianceWindowNumber == 1) {
                                     // PluginLog.Information($"drawing alliance ONE, {group} {memberIdx} {name} {user?.DisplayName}");
                                     this.DrawIndicatorAlliance(drawList, allianceWindow1, memberIdx, user);
+                                    knownUsers.Add(user!);
                                 } else if (allianceWindowNumber == 2) {
                                     // PluginLog.Information($"drawing alliance TWOOOOOOO, {group} {memberIdx} {name} {user?.DisplayName}");
                                     this.DrawIndicatorAlliance(drawList, allianceWindow2, memberIdx, user);
+                                    knownUsers.Add(user!);
                                 } else {
                                     PluginLog.Error(
                                         $"bad alliance window {allianceWindowNumber}, are you doing DRS or something"
@@ -320,6 +328,67 @@ public sealed class Plugin: IDalamudPlugin {
                             }
 
                             allianceWindowNumber++;
+                        }
+                    }
+
+                    // who else is talking?
+                    if (this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
+                        var pos = new Vector2(0, 0);
+                        var node = (AtkResNode*)null; // lol lmao
+                        for (uint id = 10; id <= 18; id++) {
+                            node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                            if (!node->IsVisible) {
+                                break;
+                            }
+
+                            pos = GetNodePosition(node);
+                        }
+
+                        pos.X += 27 * partyAddon->AtkUnitBase.Scale;
+                        pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
+
+                        var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
+                        var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
+                        var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
+                        var textPadding = new Vector2(8, 2);
+
+                        foreach (var user in this.Connection.AllUsers.Values) {
+                            if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
+                                var size = ImGui.CalcTextSize(user.DisplayName);
+                                var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
+                                drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                drawList.AddRectFilledMultiColor(
+                                    midPoint,
+                                    rightEdge.WithY(rightEdge.Y + size.Y + 4),
+                                    leftColor,
+                                    rightColor,
+                                    rightColor,
+                                    leftColor
+                                );
+                                drawList.AddText(pos + textPadding, textColor, user.DisplayName);
+                                pos.Y += size.Y + 5;
+                            }
+                        }
+
+                        if (this.ConfigWindow.IsOpen) {
+                            foreach (var s in new[]
+                                { "additional names will appear here...", "...when other people speak" }) {
+                                var size = ImGui.CalcTextSize(s);
+                                var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
+                                drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                drawList.AddRectFilledMultiColor(
+                                    midPoint,
+                                    rightEdge.WithY(rightEdge.Y + size.Y + 4),
+                                    leftColor,
+                                    rightColor,
+                                    rightColor,
+                                    leftColor
+                                );
+                                drawList.AddText(pos + textPadding, textColor, s);
+                                pos.Y += size.Y + 5;
+                            }
                         }
                     }
                 }

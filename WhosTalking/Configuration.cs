@@ -5,6 +5,11 @@ using Dalamud.Plugin;
 
 namespace WhosTalking;
 
+public enum NonXivUsersDisplayMode {
+    Off = 0,
+    BelowPartyList = 1,
+}
+
 [Serializable]
 public sealed class Configuration: IPluginConfiguration {
     // the below exist just to make saving less cumbersome
@@ -13,6 +18,7 @@ public sealed class Configuration: IPluginConfiguration {
 
     public string? AccessToken { get; set; }
     public List<AssignmentEntry> IndividualAssignments { get; set; } = new();
+    public NonXivUsersDisplayMode NonXivUsersDisplayMode { get; set; } = NonXivUsersDisplayMode.BelowPartyList;
     public int Version { get; set; } = 0;
 
     public void Initialize(DalamudPluginInterface pluginInterface) {
