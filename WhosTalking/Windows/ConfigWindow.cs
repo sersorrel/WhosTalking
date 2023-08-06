@@ -23,7 +23,7 @@ public sealed class ConfigWindow: Window, IDisposable {
     public void Dispose() {}
 
     public override void Draw() {
-        ImGui.Text("Thanks for trying Who's Talking!");
+        ImGui.Text($"Thanks for {(this.plugin.PluginInterface.IsTesting ? "testing" : "using")} Who's Talking!");
 
         ImGui.Separator();
         ImGui.Text("Status:");
@@ -42,16 +42,10 @@ public sealed class ConfigWindow: Window, IDisposable {
         ImGui.Separator();
         ImGui.Text("Potential issues:");
         ImGui.BulletText(
-            "“My game is slow!”"
-            + "\n Please contact me (“send feedback” in the plugin installer, ping me on Discord,"
-            + "\n or open a GitHub issue) with details of how many people are in your Discord call"
-            + "\n and how many people are in your party/alliance."
-        );
-        ImGui.BulletText(
-            "“I get yellow bars instead of voice activity indicators...”"
+            "“I get yellow boxes instead of voice activity indicators...”"
             + "\n Get the relevant people to put their character names (first or last name is"
-            + "\n good enough) in their Discord nicknames. Eventually I'll build a UI to let you"
-            + "\n fix this yourself and/or turn off the yellow bars."
+            + "\n good enough) in their Discord nicknames, or click “Advanced Individual Assignments”"
+            + "\n at the bottom of this window."
         );
         ImGui.BulletText(
             "“If I open Discord after the game starts, it takes a minute to connect.”"
@@ -66,9 +60,9 @@ public sealed class ConfigWindow: Window, IDisposable {
             ImGui.Separator();
 
             ImGui.AlignTextToFramePadding();
-            ImGui.Text("If you closed the debug window, you can reopen it:");
+            ImGui.Text("This text deliberately looks weird in dev mode.");
             ImGui.SameLine();
-            if (ImGui.Button("click here")) {
+            if (ImGui.Button("Open debug window")) {
                 this.plugin.MainWindow.IsOpen = true;
             }
         }
