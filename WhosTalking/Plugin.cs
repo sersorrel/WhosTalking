@@ -331,6 +331,7 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     private User? XivToDiscord(string name, string? world) {
+        // TODO: this is hilariously quadratic, i should make it not be
         foreach (var user in this.Connection.AllUsers.Values) {
             var discordId = user.UserId;
 
@@ -339,6 +340,10 @@ public sealed class Plugin: IDalamudPlugin {
                     return user;
                 }
             }
+        }
+
+        foreach (var user in this.Connection.AllUsers.Values) {
+            var discordId = user.UserId;
 
             var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
             if (discordName == null) {
