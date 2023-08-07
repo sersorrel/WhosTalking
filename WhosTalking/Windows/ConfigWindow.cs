@@ -58,6 +58,12 @@ public sealed class ConfigWindow: Window, IDisposable {
             this.plugin.Configuration.Save();
         }
 
+        var showUnmatchedUsers = this.plugin.Configuration.ShowUnmatchedUsers;
+        if (ImGui.Checkbox("Show yellow boxes for unmatched users", ref showUnmatchedUsers)) {
+            this.plugin.Configuration.ShowUnmatchedUsers = showUnmatchedUsers;
+            this.plugin.Configuration.Save();
+        }
+
         ImGui.Separator();
         ImGui.Text("Potential issues:");
         ImGui.BulletText(

@@ -89,10 +89,10 @@ public sealed class Plugin: IDalamudPlugin {
         this.ConfigWindow.IsOpen = true;
     }
 
-    private static uint GetColour(User? user) {
+    private uint GetColour(User? user) {
         // colours are ABGR
         if (user == null) {
-            return 0xFF00FFFF; // yellow
+            return this.Configuration.ShowUnmatchedUsers ? 0xFF00FFFF : 0; // yellow or transparent
         }
 
         if (user.Speaking.GetValueOrDefault()) {
@@ -143,7 +143,7 @@ public sealed class Plugin: IDalamudPlugin {
         drawList.AddRect(
             indicatorMin,
             indicatorMax,
-            GetColour(user),
+            this.GetColour(user),
             7 * scale,
             ImDrawFlags.RoundCornersAll,
             (3 * scale) - 1
@@ -168,7 +168,7 @@ public sealed class Plugin: IDalamudPlugin {
         drawList.AddRect(
             indicatorMin,
             indicatorMax,
-            GetColour(user),
+            this.GetColour(user),
             7 * scale,
             ImDrawFlags.RoundCornersAll,
             (3 * scale) - 1
