@@ -233,14 +233,23 @@ public sealed class Plugin: IDalamudPlugin {
                         //     && InfoProxyCrossRealm.GetPartyMemberCount() == 0))) {
                         // only enter solo mode if not in (or in a PF for) an alliance raid
                         // actually: only enter solo mode if nobody's in *our* full party AND there are no cross-realm shenanigans afoot
-                        this.DrawIndicator(drawList, partyAddon, 0, this.Connection.Self);
-                        knownUsers.Add(this.Connection.Self!);
+                        // additionally, don't enter solo mode if our own party list entry is hidden
+                        // ("hide party list when solo", under Character Configuration > UI Settings > Party List)
+                        // because that would draw the indicator on top of e.g. our chocobo
+                        var node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(10);
+                        if (node != null && node->IsVisible) {
+                            this.DrawIndicator(drawList, partyAddon, 0, this.Connection.Self);
+                            knownUsers.Add(this.Connection.Self!);
+                        }
                     }
 
                     if (this.PartyList.Length > 0) {
                         // regular party (or cross-world party in an instance, which works out the same)
                         var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
-                        var partyMemberCount = agentHud->PartyMemberCount;
+                        // take the lower of these two; we don't want to index off the end of PartyMemberList,
+                        // but PartyList seems to have a better idea of how many *people* are in the party
+                        // (as opposed to e.g. a chocobo)
+                        var partyMemberCount = Math.Min(this.PartyList.Length, agentHud->PartyMemberCount);
                         var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList; // length 10
                         for (var i = 0; i < partyMemberCount; i++) {
                             var partyMember = partyMemberList[i];
