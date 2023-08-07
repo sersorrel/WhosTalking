@@ -344,16 +344,34 @@ public sealed class Plugin: IDalamudPlugin {
                     if (this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
                         var pos = new Vector2(0, 0);
                         var node = (AtkResNode*)null; // lol lmao
-                        for (uint id = 10; id <= 18; id++) {
+
+                        for (uint id = 10; id <= 19; id++) {
                             node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                            if (!node->IsVisible) {
-                                break;
+                            if (node == null || !node->IsVisible) {
+                                continue;
                             }
 
-                            pos = GetNodePosition(node);
+                            var nodePos = GetNodePosition(node);
+                            if (nodePos.Y > pos.Y) {
+                                pos = nodePos;
+                            }
+                        }
+
+                        // chocobo (etc?)
+                        for (uint id = 180001; id <= 180007; id++) {
+                            node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                            if (node == null || !node->IsVisible) {
+                                continue;
+                            }
+
+                            var nodePos = GetNodePosition(node);
+                            if (nodePos.Y > pos.Y) {
+                                pos = nodePos;
+                            }
                         }
 
                         pos.X += 27 * partyAddon->AtkUnitBase.Scale;
+                        // all these nodes are the same height, so it doesn't matter which one we have here
                         pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
 
                         var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
