@@ -412,8 +412,6 @@ public sealed class Plugin: IDalamudPlugin {
         }
 
         foreach (var user in this.Connection.AllUsers.Values) {
-            var discordId = user.UserId;
-
             var discordName = user.DisplayName.IsNullOrEmpty() ? user.Username : user.DisplayName;
             if (discordName == null) {
                 continue;
