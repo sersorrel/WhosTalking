@@ -19,6 +19,7 @@ public sealed class Configuration: IPluginConfiguration {
     public string? AccessToken { get; set; }
     public List<AssignmentEntry> IndividualAssignments { get; set; } = new();
     public NonXivUsersDisplayMode NonXivUsersDisplayMode { get; set; } = NonXivUsersDisplayMode.BelowPartyList;
+    public bool ShowIndicators { get; set; } = true;
     public bool ShowUnmatchedUsers { get; set; } = true;
     public int Version { get; set; } = 0;
 

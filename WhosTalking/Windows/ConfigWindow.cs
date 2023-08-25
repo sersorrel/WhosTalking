@@ -40,6 +40,21 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         ImGui.Separator();
+        var showIndicators = this.plugin.Configuration.ShowIndicators;
+        if (ImGui.Checkbox("Show voice activity indicators (DelvUI users, disable this!)", ref showIndicators)) {
+            this.plugin.Configuration.ShowIndicators = showIndicators;
+            this.plugin.Configuration.Save();
+        }
+
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip(
+                "There's no easy way for plugins to know if you hid the party list, annoyingly."
+                + "\nIf you use DelvUI (or any other plugin that completely replaces the party list),"
+                + "\nyou can disable this to hide the voice activity indicators on the vanilla party list."
+                + "\nThe indicators in DelvUI will continue to function."
+            );
+        }
+
         var nonXivUsersDisplayMode = (int)this.plugin.Configuration.NonXivUsersDisplayMode;
         var nonXivUsersDisplayModes = Enum.GetValues(typeof(NonXivUsersDisplayMode))
             .Cast<NonXivUsersDisplayMode>()
@@ -62,6 +77,13 @@ public sealed class ConfigWindow: Window, IDisposable {
         if (ImGui.Checkbox("Show yellow boxes for unmatched users", ref showUnmatchedUsers)) {
             this.plugin.Configuration.ShowUnmatchedUsers = showUnmatchedUsers;
             this.plugin.Configuration.Save();
+        }
+
+        if (ImGui.IsItemHovered() && !showIndicators) {
+            ImGui.SetTooltip(
+                "Because “Show voice activity indicators” is disabled,"
+                + "\nthis setting has no effect."
+            );
         }
 
         ImGui.Separator();
