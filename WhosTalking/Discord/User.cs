@@ -1,4 +1,4 @@
-﻿namespace WhosTalking.Discord;
+namespace WhosTalking.Discord;
 
 public class User {
     public readonly string UserId;
@@ -35,4 +35,29 @@ public class User {
         this.Deafened = other.Deafened ?? this.Deafened;
         this.Speaking = other.Speaking ?? this.Speaking;
     }
+
+    public UserState State {
+        get {
+            if (Deafened == true) {
+                return UserState.Deafened;
+            }
+
+            if (Speaking == true) {
+                return UserState.Speaking;
+            }
+
+            if (Muted == true) {
+                return UserState.Muted;
+            }
+
+            return UserState.None;
+        }
+    }
+}
+
+public enum UserState: int {
+    None = 0,
+    Speaking = 1,
+    Muted = 2,
+    Deafened = 3
 }

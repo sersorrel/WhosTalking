@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Gui;
@@ -28,6 +29,7 @@ namespace WhosTalking;
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
     internal DiscordConnection Connection;
+    internal IpcSystem IpcSystem;
     private Stack<Action> disposeActions = new();
     public WindowSystem WindowSystem = new("WhosTalking");
 
@@ -35,12 +37,15 @@ public sealed class Plugin: IDalamudPlugin {
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
         [RequiredVersion("1.0")] GameGui gameGui,
         [RequiredVersion("1.0")] PartyList partyList,
-        [RequiredVersion("1.0")] ObjectTable objectTable
+        [RequiredVersion("1.0")] ObjectTable objectTable,
+        [RequiredVersion("1.0")] ClientState clientState
+        
     ) {
         this.PluginInterface = pluginInterface;
         this.GameGui = gameGui;
         this.PartyList = partyList;
         this.ObjectTable = objectTable;
+        this.ClientState = clientState;
 
         this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.Configuration.Initialize(this.PluginInterface);
@@ -62,6 +67,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.Connection = new DiscordConnection(this);
         this.disposeActions.Push(() => this.Connection.Dispose());
 
+        this.IpcSystem = new IpcSystem(this, pluginInterface);
+        this.disposeActions.Push(() => this.IpcSystem.Dispose());
+
 #if DEBUG
         // this.MainWindow.IsOpen = true;
 #endif
@@ -77,6 +85,7 @@ public sealed class Plugin: IDalamudPlugin {
     internal PartyList PartyList { get; init; }
     internal ObjectTable ObjectTable { get; init; }
     internal DalamudPluginInterface PluginInterface { get; init; }
+    internal ClientState ClientState { get; init; }
     public string Name => "Who's Talking";
 
     public void Dispose() {
@@ -426,7 +435,12 @@ public sealed class Plugin: IDalamudPlugin {
         }
     }
 
-    private User? XivToDiscord(string name, string? world) {
+    public User? XivToDiscord(string name, string? world = null) {
+
+        if (name == ClientState.LocalPlayer?.Name.ToString()) {
+            return Connection.Self;
+        }
+        
         // TODO: this is hilariously quadratic, i should make it not be
         foreach (var user in this.Connection.AllUsers.Values) {
             var discordId = user.UserId;
