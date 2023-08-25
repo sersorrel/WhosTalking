@@ -139,6 +139,10 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     private unsafe void DrawIndicator(ImDrawListPtr drawList, AddonPartyList* partyAddon, int idx, User? user) {
+        if (!this.Configuration.ShowIndicators) {
+            return;
+        }
+
         var colNode = &partyAddon->PartyMember[idx].ClassJobIcon->AtkResNode;
         if ((nint)colNode == nint.Zero) { // this seems like it's null sometimes? set up cwp via pf, exception on join
             return;
@@ -160,6 +164,10 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     private unsafe void DrawIndicatorAlliance(ImDrawListPtr drawList, AtkUnitBase* allianceAddon, int idx, User? user) {
+        if (!this.Configuration.ShowIndicators) {
+            return;
+        }
+
         // if (idx is 0 or 1 or 2) {
         //     PluginLog.Information($"idx {idx} {user?.DisplayName} is speaking: {user?.Speaking}");
         // }
@@ -212,8 +220,7 @@ public sealed class Plugin: IDalamudPlugin {
                 // the IsVisible test prevents us from drawing if the party list is hidden because "hide party list when solo" is enabled,
                 // but it doesn't help at all for the case where the user hid their party list via HUD Layout.
                 // (this seems like a common behaviour across the whole of HUD Layout, frustratingly)
-                var canDrawParty = (nint)partyAddon != nint.Zero && partyAddon->AtkUnitBase.IsVisible;
-                var shouldDrawParty = canDrawParty && this.Configuration.ShowIndicators;
+                var shouldDrawParty = (nint)partyAddon != nint.Zero && partyAddon->AtkUnitBase.IsVisible;
                 if (shouldDrawParty) {
                     // cross-world party stuff: basically separate from everything else
                     // specifically, here we draw the cross-world stuff just for our own full party
@@ -353,83 +360,83 @@ public sealed class Plugin: IDalamudPlugin {
                             allianceWindowNumber++;
                         }
                     }
-                }
 
-                // who else is talking?
-                if (canDrawParty && this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
-                    var pos = new Vector2(0, 0);
-                    var node = (AtkResNode*)null; // lol lmao
+                    // who else is talking?
+                    if (this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
+                        var pos = new Vector2(0, 0);
+                        var node = (AtkResNode*)null; // lol lmao
 
-                    for (uint id = 10; id <= 19; id++) {
-                        node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                        if (node == null || !node->IsVisible) {
-                            continue;
+                        for (uint id = 10; id <= 19; id++) {
+                            node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                            if (node == null || !node->IsVisible) {
+                                continue;
+                            }
+
+                            var nodePos = GetNodePosition(node);
+                            if (nodePos.Y > pos.Y) {
+                                pos = nodePos;
+                            }
                         }
 
-                        var nodePos = GetNodePosition(node);
-                        if (nodePos.Y > pos.Y) {
-                            pos = nodePos;
+                        // chocobo (etc?)
+                        for (uint id = 180001; id <= 180007; id++) {
+                            node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                            if (node == null || !node->IsVisible) {
+                                continue;
+                            }
+
+                            var nodePos = GetNodePosition(node);
+                            if (nodePos.Y > pos.Y) {
+                                pos = nodePos;
+                            }
                         }
-                    }
 
-                    // chocobo (etc?)
-                    for (uint id = 180001; id <= 180007; id++) {
-                        node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                        if (node == null || !node->IsVisible) {
-                            continue;
+                        pos.X += 27 * partyAddon->AtkUnitBase.Scale;
+                        // all these nodes are the same height, so it doesn't matter which one we have here
+                        pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
+
+                        var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
+                        var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
+                        var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
+                        var textPadding = new Vector2(8, 2);
+
+                        foreach (var user in this.Connection.AllUsers.Values) {
+                            if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
+                                var size = ImGui.CalcTextSize(user.DisplayName);
+                                var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
+                                drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                drawList.AddRectFilledMultiColor(
+                                    midPoint,
+                                    rightEdge.WithY(rightEdge.Y + size.Y + 4),
+                                    leftColor,
+                                    rightColor,
+                                    rightColor,
+                                    leftColor
+                                );
+                                drawList.AddText(pos + textPadding, textColor, user.DisplayName);
+                                pos.Y += size.Y + 5;
+                            }
                         }
 
-                        var nodePos = GetNodePosition(node);
-                        if (nodePos.Y > pos.Y) {
-                            pos = nodePos;
-                        }
-                    }
-
-                    pos.X += 27 * partyAddon->AtkUnitBase.Scale;
-                    // all these nodes are the same height, so it doesn't matter which one we have here
-                    pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
-
-                    var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
-                    var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
-                    var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
-                    var textPadding = new Vector2(8, 2);
-
-                    foreach (var user in this.Connection.AllUsers.Values) {
-                        if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
-                            var size = ImGui.CalcTextSize(user.DisplayName);
-                            var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
-                            var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                            drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
-                            drawList.AddRectFilledMultiColor(
-                                midPoint,
-                                rightEdge.WithY(rightEdge.Y + size.Y + 4),
-                                leftColor,
-                                rightColor,
-                                rightColor,
-                                leftColor
-                            );
-                            drawList.AddText(pos + textPadding, textColor, user.DisplayName);
-                            pos.Y += size.Y + 5;
-                        }
-                    }
-
-                    if (this.ConfigWindow.IsOpen) {
-                        foreach (var s in new[]
-                            { "additional names will appear here...", "...when other people speak" }) {
-                            var size = ImGui.CalcTextSize(s);
-                            var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
-                            var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                            drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
-                            drawList.AddRectFilledMultiColor(
-                                midPoint,
-                                rightEdge.WithY(rightEdge.Y + size.Y + 4),
-                                leftColor,
-                                rightColor,
-                                rightColor,
-                                leftColor
-                            );
-                            drawList.AddText(pos + textPadding, textColor, s);
-                            pos.Y += size.Y + 5;
+                        if (this.ConfigWindow.IsOpen) {
+                            foreach (var s in new[]
+                                { "additional names will appear here...", "...when other people speak" }) {
+                                var size = ImGui.CalcTextSize(s);
+                                var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
+                                drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                drawList.AddRectFilledMultiColor(
+                                    midPoint,
+                                    rightEdge.WithY(rightEdge.Y + size.Y + 4),
+                                    leftColor,
+                                    rightColor,
+                                    rightColor,
+                                    leftColor
+                                );
+                                drawList.AddText(pos + textPadding, textColor, s);
+                                pos.Y += size.Y + 5;
+                            }
                         }
                     }
                 }
