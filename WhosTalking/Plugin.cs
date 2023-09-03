@@ -365,6 +365,7 @@ public sealed class Plugin: IDalamudPlugin {
                     if (this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
                         var pos = new Vector2(0, 0);
                         var node = (AtkResNode*)null; // lol lmao
+                        var lastGoodNode = (AtkResNode*)null;
 
                         for (uint id = 10; id <= 19; id++) {
                             node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
@@ -372,6 +373,7 @@ public sealed class Plugin: IDalamudPlugin {
                                 continue;
                             }
 
+                            lastGoodNode = node;
                             var nodePos = GetNodePosition(node);
                             if (nodePos.Y > pos.Y) {
                                 pos = nodePos;
@@ -385,57 +387,61 @@ public sealed class Plugin: IDalamudPlugin {
                                 continue;
                             }
 
+                            lastGoodNode = node;
                             var nodePos = GetNodePosition(node);
                             if (nodePos.Y > pos.Y) {
                                 pos = nodePos;
                             }
                         }
 
-                        pos.X += 27 * partyAddon->AtkUnitBase.Scale;
-                        // all these nodes are the same height, so it doesn't matter which one we have here
-                        pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
+                        if (lastGoodNode != null) {
+                            pos.X += 27 * partyAddon->AtkUnitBase.Scale;
+                            // all these nodes are the same height, so it doesn't matter which one we have here
+                            // TODO: XXX: node can be null here, which is a problem
+                            pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
 
-                        var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
-                        var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
-                        var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
-                        var textPadding = new Vector2(8, 2);
+                            var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
+                            var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
+                            var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
+                            var textPadding = new Vector2(8, 2);
 
-                        foreach (var user in this.Connection.AllUsers.Values) {
-                            if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
-                                var size = ImGui.CalcTextSize(user.DisplayName);
-                                var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
-                                var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                                drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
-                                drawList.AddRectFilledMultiColor(
-                                    midPoint,
-                                    rightEdge.WithY(rightEdge.Y + size.Y + 4),
-                                    leftColor,
-                                    rightColor,
-                                    rightColor,
-                                    leftColor
-                                );
-                                drawList.AddText(pos + textPadding, textColor, user.DisplayName);
-                                pos.Y += size.Y + 5;
+                            foreach (var user in this.Connection.AllUsers.Values) {
+                                if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
+                                    var size = ImGui.CalcTextSize(user.DisplayName);
+                                    var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                    var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
+                                    drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                    drawList.AddRectFilledMultiColor(
+                                        midPoint,
+                                        rightEdge.WithY(rightEdge.Y + size.Y + 4),
+                                        leftColor,
+                                        rightColor,
+                                        rightColor,
+                                        leftColor
+                                    );
+                                    drawList.AddText(pos + textPadding, textColor, user.DisplayName);
+                                    pos.Y += size.Y + 5;
+                                }
                             }
-                        }
 
-                        if (this.ConfigWindow.IsOpen) {
-                            foreach (var s in new[]
-                                { "additional names will appear here...", "...when other people speak" }) {
-                                var size = ImGui.CalcTextSize(s);
-                                var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
-                                var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                                drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
-                                drawList.AddRectFilledMultiColor(
-                                    midPoint,
-                                    rightEdge.WithY(rightEdge.Y + size.Y + 4),
-                                    leftColor,
-                                    rightColor,
-                                    rightColor,
-                                    leftColor
-                                );
-                                drawList.AddText(pos + textPadding, textColor, s);
-                                pos.Y += size.Y + 5;
+                            if (this.ConfigWindow.IsOpen) {
+                                foreach (var s in new[]
+                                    { "additional names will appear here...", "...when other people speak" }) {
+                                    var size = ImGui.CalcTextSize(s);
+                                    var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                    var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
+                                    drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                    drawList.AddRectFilledMultiColor(
+                                        midPoint,
+                                        rightEdge.WithY(rightEdge.Y + size.Y + 4),
+                                        leftColor,
+                                        rightColor,
+                                        rightColor,
+                                        leftColor
+                                    );
+                                    drawList.AddText(pos + textPadding, textColor, s);
+                                    pos.Y += size.Y + 5;
+                                }
                             }
                         }
                     }
