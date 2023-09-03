@@ -363,7 +363,7 @@ public sealed class Plugin: IDalamudPlugin {
 
                     // who else is talking?
                     if (this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
-                        var pos = new Vector2(0, 0);
+                        Vector2? pos = null;
                         var node = (AtkResNode*)null; // lol lmao
                         var lastGoodNode = (AtkResNode*)null;
 
@@ -375,7 +375,7 @@ public sealed class Plugin: IDalamudPlugin {
 
                             lastGoodNode = node;
                             var nodePos = GetNodePosition(node);
-                            if (nodePos.Y > pos.Y) {
+                            if (pos == null || nodePos.Y > pos.Value.Y) {
                                 pos = nodePos;
                             }
                         }
@@ -389,16 +389,16 @@ public sealed class Plugin: IDalamudPlugin {
 
                             lastGoodNode = node;
                             var nodePos = GetNodePosition(node);
-                            if (nodePos.Y > pos.Y) {
+                            if (pos == null || nodePos.Y > pos.Value.Y) {
                                 pos = nodePos;
                             }
                         }
 
                         if (lastGoodNode != null) {
-                            pos.X += 27 * partyAddon->AtkUnitBase.Scale;
+                            var position = pos ?? new Vector2(0, 0);
+                            position.X += 27 * partyAddon->AtkUnitBase.Scale;
                             // all these nodes are the same height, so it doesn't matter which one we have here
-                            // TODO: XXX: node can be null here, which is a problem
-                            pos.Y += (node->Height - 10) * partyAddon->AtkUnitBase.Scale;
+                            position.Y += (lastGoodNode->Height - 10) * partyAddon->AtkUnitBase.Scale;
 
                             var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
                             var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
@@ -408,9 +408,9 @@ public sealed class Plugin: IDalamudPlugin {
                             foreach (var user in this.Connection.AllUsers.Values) {
                                 if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
                                     var size = ImGui.CalcTextSize(user.DisplayName);
-                                    var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                    var midPoint = position.WithX(position.X + (170 * partyAddon->AtkUnitBase.Scale));
                                     var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                                    drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                    drawList.AddRectFilled(position, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
                                     drawList.AddRectFilledMultiColor(
                                         midPoint,
                                         rightEdge.WithY(rightEdge.Y + size.Y + 4),
@@ -419,8 +419,8 @@ public sealed class Plugin: IDalamudPlugin {
                                         rightColor,
                                         leftColor
                                     );
-                                    drawList.AddText(pos + textPadding, textColor, user.DisplayName);
-                                    pos.Y += size.Y + 5;
+                                    drawList.AddText(position + textPadding, textColor, user.DisplayName);
+                                    position.Y += size.Y + 5;
                                 }
                             }
 
@@ -428,9 +428,9 @@ public sealed class Plugin: IDalamudPlugin {
                                 foreach (var s in new[]
                                     { "additional names will appear here...", "...when other people speak" }) {
                                     var size = ImGui.CalcTextSize(s);
-                                    var midPoint = pos.WithX(pos.X + (170 * partyAddon->AtkUnitBase.Scale));
+                                    var midPoint = position.WithX(position.X + (170 * partyAddon->AtkUnitBase.Scale));
                                     var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                                    drawList.AddRectFilled(pos, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                    drawList.AddRectFilled(position, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
                                     drawList.AddRectFilledMultiColor(
                                         midPoint,
                                         rightEdge.WithY(rightEdge.Y + size.Y + 4),
@@ -439,8 +439,8 @@ public sealed class Plugin: IDalamudPlugin {
                                         rightColor,
                                         leftColor
                                     );
-                                    drawList.AddText(pos + textPadding, textColor, s);
-                                    pos.Y += size.Y + 5;
+                                    drawList.AddText(position + textPadding, textColor, s);
+                                    position.Y += size.Y + 5;
                                 }
                             }
                         }
