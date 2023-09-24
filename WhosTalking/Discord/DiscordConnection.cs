@@ -173,7 +173,7 @@ public class DiscordConnection {
             info.Exception != null ? info.Exception : "(null)",
             info.Type,
             info.CloseStatus?.ToString() ?? "(null)",
-            info.CloseStatusDescription
+            info.CloseStatusDescription ?? "(null)"
         );
     }
 
