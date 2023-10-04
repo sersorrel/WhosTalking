@@ -5,7 +5,6 @@ using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using Dalamud.Logging;
 using Websocket.Client;
 
 namespace WhosTalking.Discord;
@@ -55,7 +54,7 @@ public class DiscordConnection {
     internal DiscordChannel? Channel {
         get => this.currentChannel;
         set {
-            PluginLog.Log(
+            this.plugin.PluginLog.Debug(
                 "channel switch {oldG} {oldC} => {newG} {newC}",
                 this.currentChannel?.Guild ?? "(null)",
                 this.currentChannel?.Channel ?? "(null)",
@@ -101,7 +100,7 @@ public class DiscordConnection {
     }
 
     private void Authenticate() {
-        PluginLog.Log("authenticate...");
+        this.plugin.PluginLog.Information("authenticate...");
         this.webSocket.Send(
             JsonSerializer.Serialize(
                 new {
@@ -116,7 +115,7 @@ public class DiscordConnection {
     }
 
     private void Authorize1() {
-        PluginLog.Log("authorize, stage 1");
+        this.plugin.PluginLog.Information("authorize, stage 1");
         this.webSocket.Send(
             JsonSerializer.Serialize(
                 new {
@@ -133,7 +132,7 @@ public class DiscordConnection {
     }
 
     private async void Authorize2(string authCode) {
-        PluginLog.Log("authorize, stage 2");
+        this.plugin.PluginLog.Information("authorize, stage 2");
         using var client = new HttpClient();
         var response = await client.PostAsync(
             new Uri("https://streamkit.discord.com/overlay/token"),
@@ -168,7 +167,7 @@ public class DiscordConnection {
             return;
         }
 
-        PluginLog.Error(
+        this.plugin.PluginLog.Error(
             "disconnected; exception {exception}, type {type}, status {status}, description {description}",
             info.Exception != null ? info.Exception : "(null)",
             info.Type,
@@ -187,7 +186,7 @@ public class DiscordConnection {
             var redacted = this.AccessToken != null
                 ? message.ToString().Replace(this.AccessToken, "[token]")
                 : message.ToString();
-            PluginLog.Debug("got message: {message}", redacted);
+            this.plugin.PluginLog.Debug("got message: {message}", redacted);
         }
 
         switch (cmd.GetString()) {
@@ -197,7 +196,7 @@ public class DiscordConnection {
                         // connected, ready to do auth
                         var version = root.GetProperty("data").GetProperty("v").GetInt64();
                         if (version != 1) {
-                            PluginLog.Warning("unexpected api version {version}", version);
+                            this.plugin.PluginLog.Warning("unexpected api version {version}", version);
                         }
 
                         this.Authenticate();
@@ -292,7 +291,7 @@ public class DiscordConnection {
                         if (this.AllUsers.TryGetValue(userId, out var user)) {
                             user.Speaking = true;
                         } else {
-                            PluginLog.Warning("got SPEAKING_START for unknown user {id}", userId);
+                            this.plugin.PluginLog.Warning("got SPEAKING_START for unknown user {id}", userId);
                         }
 
                         break;
@@ -302,7 +301,7 @@ public class DiscordConnection {
                         if (this.AllUsers.TryGetValue(userId, out var user)) {
                             user.Speaking = false;
                         } else {
-                            PluginLog.Warning("got SPEAKING_STOP for unknown user {id}", userId);
+                            this.plugin.PluginLog.Warning("got SPEAKING_STOP for unknown user {id}", userId);
                         }
 
                         break;

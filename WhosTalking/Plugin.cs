@@ -2,15 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Party;
-using Dalamud.Game.Gui;
-using Dalamud.Interface;
+using Dalamud.Game.Command;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using Dalamud.Utility.Numerics;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
@@ -29,23 +25,26 @@ namespace WhosTalking;
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
     internal DiscordConnection Connection;
-    internal IpcSystem IpcSystem;
     private Stack<Action> disposeActions = new();
+    internal IpcSystem IpcSystem;
     public WindowSystem WindowSystem = new("WhosTalking");
 
     public Plugin(
-        [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-        [RequiredVersion("1.0")] GameGui gameGui,
-        [RequiredVersion("1.0")] PartyList partyList,
-        [RequiredVersion("1.0")] ObjectTable objectTable,
-        [RequiredVersion("1.0")] ClientState clientState
-        
+        DalamudPluginInterface pluginInterface,
+        IGameGui gameGui,
+        IPartyList partyList,
+        IObjectTable objectTable,
+        IClientState clientState,
+        ICommandManager commandManager,
+        IPluginLog pluginLog
     ) {
         this.PluginInterface = pluginInterface;
         this.GameGui = gameGui;
         this.PartyList = partyList;
         this.ObjectTable = objectTable;
         this.ClientState = clientState;
+        this.CommandManager = commandManager;
+        this.PluginLog = pluginLog;
 
         this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.Configuration.Initialize(this.PluginInterface);
@@ -70,8 +69,12 @@ public sealed class Plugin: IDalamudPlugin {
         this.IpcSystem = new IpcSystem(this, pluginInterface);
         this.disposeActions.Push(() => this.IpcSystem.Dispose());
 
+        this.CommandManager.AddHandler("/whostalking", new CommandInfo(this.OnCommand));
+        this.disposeActions.Push(() => this.CommandManager.RemoveHandler("/whostalking"));
+
 #if DEBUG
         // this.MainWindow.IsOpen = true;
+        // this.ConfigWindow.IsOpen = true;
 #endif
         if (pluginInterface.Reason == PluginLoadReason.Installer) {
             this.ConfigWindow.IsOpen = true;
@@ -80,18 +83,23 @@ public sealed class Plugin: IDalamudPlugin {
 
     public Configuration Configuration { get; init; }
     internal ConfigWindow ConfigWindow { get; init; }
-    internal GameGui GameGui { get; init; }
+    internal IGameGui GameGui { get; init; }
     internal MainWindow MainWindow { get; init; }
-    internal PartyList PartyList { get; init; }
-    internal ObjectTable ObjectTable { get; init; }
+    internal IPartyList PartyList { get; init; }
+    internal IObjectTable ObjectTable { get; init; }
     internal DalamudPluginInterface PluginInterface { get; init; }
-    internal ClientState ClientState { get; init; }
-    public string Name => "Who's Talking";
+    internal IClientState ClientState { get; init; }
+    internal ICommandManager CommandManager { get; init; }
+    internal IPluginLog PluginLog { get; init; }
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
             action.Invoke();
         }
+    }
+
+    private void OnCommand(string command, string args) {
+        this.ConfigWindow.IsOpen = !this.ConfigWindow.IsOpen;
     }
 
     public void OpenConfigUi() {
@@ -234,7 +242,7 @@ public sealed class Plugin: IDalamudPlugin {
                         var memberCount = InfoProxyCrossRealm.GetGroupMemberCount(ipcr->LocalPlayerGroupIndex);
                         for (var i = 0; i < memberCount; i++) {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
-                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!, null);
+                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!);
                             this.DrawIndicator(drawList, partyAddon, i, user);
                             knownUsers.Add(user!);
                         }
@@ -242,7 +250,7 @@ public sealed class Plugin: IDalamudPlugin {
                         var memberCount = InfoProxyCrossRealm.GetPartyMemberCount();
                         for (var i = 0; i < memberCount; i++) {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
-                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!, null);
+                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!);
                             this.DrawIndicator(drawList, partyAddon, i, user);
                             knownUsers.Add(user!);
                         }
@@ -275,7 +283,7 @@ public sealed class Plugin: IDalamudPlugin {
                         for (var i = 0; i < partyMemberCount; i++) {
                             var partyMember = partyMemberList[i];
                             // TODO: look at partyMember.Object (and this.PartyList)
-                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!, null);
+                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!);
                             this.DrawIndicator(drawList, partyAddon, i, user);
                             knownUsers.Add(user!);
                         }
@@ -340,7 +348,7 @@ public sealed class Plugin: IDalamudPlugin {
                                     continue;
                                 }
 
-                                var user = this.XivToDiscord(name, null);
+                                var user = this.XivToDiscord(name);
                                 // PluginLog.Information($"[{group}][{memberIdx}]: {Marshal.PtrToStringUTF8((nint)member->Name)!}");
                                 if (allianceWindowNumber == 1) {
                                     // PluginLog.Information($"drawing alliance ONE, {group} {memberIdx} {name} {user?.DisplayName}");
@@ -351,7 +359,7 @@ public sealed class Plugin: IDalamudPlugin {
                                     this.DrawIndicatorAlliance(drawList, allianceWindow2, memberIdx, user);
                                     knownUsers.Add(user!);
                                 } else {
-                                    PluginLog.Error(
+                                    this.PluginLog.Error(
                                         $"bad alliance window {allianceWindowNumber}, are you doing DRS or something"
                                     );
                                 }
@@ -410,7 +418,11 @@ public sealed class Plugin: IDalamudPlugin {
                                     var size = ImGui.CalcTextSize(user.DisplayName);
                                     var midPoint = position.WithX(position.X + (170 * partyAddon->AtkUnitBase.Scale));
                                     var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                                    drawList.AddRectFilled(position, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                    drawList.AddRectFilled(
+                                        position,
+                                        midPoint.WithY(midPoint.Y + size.Y + 4),
+                                        leftColor
+                                    );
                                     drawList.AddRectFilledMultiColor(
                                         midPoint,
                                         rightEdge.WithY(rightEdge.Y + size.Y + 4),
@@ -430,7 +442,11 @@ public sealed class Plugin: IDalamudPlugin {
                                     var size = ImGui.CalcTextSize(s);
                                     var midPoint = position.WithX(position.X + (170 * partyAddon->AtkUnitBase.Scale));
                                     var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
-                                    drawList.AddRectFilled(position, midPoint.WithY(midPoint.Y + size.Y + 4), leftColor);
+                                    drawList.AddRectFilled(
+                                        position,
+                                        midPoint.WithY(midPoint.Y + size.Y + 4),
+                                        leftColor
+                                    );
                                     drawList.AddRectFilledMultiColor(
                                         midPoint,
                                         rightEdge.WithY(rightEdge.Y + size.Y + 4),
@@ -454,11 +470,10 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     public User? XivToDiscord(string name, string? world = null) {
-
-        if (name == ClientState.LocalPlayer?.Name.ToString()) {
-            return Connection.Self;
+        if (name == this.ClientState.LocalPlayer?.Name.ToString()) {
+            return this.Connection.Self;
         }
-        
+
         // TODO: this is hilariously quadratic, i should make it not be
         foreach (var user in this.Connection.AllUsers.Values) {
             var discordId = user.UserId;

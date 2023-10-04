@@ -27,6 +27,24 @@ public class User {
         this.Speaking = speaking;
     }
 
+    public UserState State {
+        get {
+            if (this.Deafened == true) {
+                return UserState.Deafened;
+            }
+
+            if (this.Speaking == true) {
+                return UserState.Speaking;
+            }
+
+            if (this.Muted == true) {
+                return UserState.Muted;
+            }
+
+            return UserState.None;
+        }
+    }
+
     public void Update(User other) {
         this.Username = other.Username ?? this.Username;
         this.Discriminator = other.Discriminator ?? this.Discriminator;
@@ -35,29 +53,11 @@ public class User {
         this.Deafened = other.Deafened ?? this.Deafened;
         this.Speaking = other.Speaking ?? this.Speaking;
     }
-
-    public UserState State {
-        get {
-            if (Deafened == true) {
-                return UserState.Deafened;
-            }
-
-            if (Speaking == true) {
-                return UserState.Speaking;
-            }
-
-            if (Muted == true) {
-                return UserState.Muted;
-            }
-
-            return UserState.None;
-        }
-    }
 }
 
-public enum UserState: int {
+public enum UserState {
     None = 0,
     Speaking = 1,
     Muted = 2,
-    Deafened = 3
+    Deafened = 3,
 }

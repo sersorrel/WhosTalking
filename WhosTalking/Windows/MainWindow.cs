@@ -126,7 +126,7 @@ public sealed class MainWindow: Window, IDisposable {
                 }
 
                 ImGui.TextUnformatted(
-                    $"InfoProxyCommonList[{i}] = idx {entry->DictIndex}, {(entry->Index == null ? "null" : "not null")}, name {(entry->Name != null ? PtrToString(entry->Name, 20) : "(null)")}"
+                    $"InfoProxyCommonList[{i}] = {(entry->Index == null ? "null" : "not null")}, name {(entry->Name != null ? PtrToString(entry->Name, 20) : "(null)")}"
                 );
             }
         }
