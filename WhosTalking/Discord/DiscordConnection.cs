@@ -177,6 +177,14 @@ public class DiscordConnection {
     }
 
     private void OnMessage(ResponseMessage message) {
+        try {
+            this.OnMessageInner(message);
+        } catch (Exception e) when (e is HttpRequestException or JsonException) {
+            this.plugin.PluginLog.Error(e, "discord machine broke");
+        }
+    }
+
+    private void OnMessageInner(ResponseMessage message) {
         using var document = JsonDocument.Parse(message.ToString());
         var root = document.RootElement;
         var cmd = root.GetProperty("cmd");
