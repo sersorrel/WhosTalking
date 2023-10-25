@@ -228,7 +228,10 @@ public sealed class Plugin: IDalamudPlugin {
                 // the IsVisible test prevents us from drawing if the party list is hidden because "hide party list when solo" is enabled,
                 // but it doesn't help at all for the case where the user hid their party list via HUD Layout.
                 // (this seems like a common behaviour across the whole of HUD Layout, frustratingly)
-                var shouldDrawParty = (nint)partyAddon != nint.Zero && partyAddon->AtkUnitBase.IsVisible;
+                var shouldDrawParty = (nint)partyAddon != nint.Zero
+                    && partyAddon->AtkUnitBase.IsVisible // false only if hidden by being in solo
+                    && (partyAddon->AtkUnitBase.VisibilityFlags & 1) == 0 // hidden by user (HUD Layout)
+                    && (partyAddon->AtkUnitBase.VisibilityFlags & 4) == 0; // hidden by game
                 if (shouldDrawParty) {
                     // cross-world party stuff: basically separate from everything else
                     // specifically, here we draw the cross-world stuff just for our own full party
