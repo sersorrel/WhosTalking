@@ -1,26 +1,22 @@
 using System;
 using System.Collections.Generic;
-using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Xml.Linq;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Windowing;
-using Dalamud.Logging;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
-using WhosTalking.Discord;
 
 namespace WhosTalking.Windows;
 
 public sealed class ConfigWindow: Window, IDisposable {
     private readonly List<AssignmentEntry> individualAssignments;
     private readonly Plugin plugin;
+    private int idInCall;
 
-    private int playerInParty = 0;
-    private int idInCall = 0;
+    private int playerInParty;
 
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
@@ -150,74 +146,6 @@ public sealed class ConfigWindow: Window, IDisposable {
                 ImGui.TableHeadersRow();
                 ImGui.TableNextRow();
 
-                // New Entry dropdowns
-
-                // Prep: grap extant player names and discord ids
-                List<string> extantPlayerNames = new List<string>();
-                foreach (var item in this.plugin.Configuration.IndividualAssignments) {
-                    extantPlayerNames.Add(item.CharacterName);
-                }
-
-                // XIV player name
-                // This is kinda transcribed from the overlay code
-                List<string> playersInParty;
-                unsafe {
-                    // Get party list and players in it
-                    var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
-                    var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList;
-                    var partyMemberCount = Math.Min(this.plugin.PartyList.Length, agentHud->PartyMemberCount);
-                    playersInParty = new List<string>();
-
-                    for (int i = 0; i < partyMemberCount; i++) {
-                        var partyMember = partyMemberList[i];
-                        var name = Marshal.PtrToStringUTF8((nint)partyMember.Name)!;
-                        // Don't add people we already know and 
-                        if (name == null || extantPlayerNames.Contains(name)) continue;
-                        playersInParty.Add(name);
-                    }
-
-                    string[] _playersInParty = playersInParty.ToArray();
-                    ImGui.TableNextColumn();
-                    ImGui.SetNextItemWidth(150);
-                    ImGui.Combo(
-                        "###PlayersInParty",
-                        ref playerInParty,
-                        _playersInParty,
-                        _playersInParty.Length
-                    );
-                }
-
-                // Discord ID
-                var discordusers = this.plugin.Connection.AllUsers;
-                var uc = this.plugin.Connection.AllUsers.Count;
-                List<string> idsInCall = new List<string>(); // actual ids
-                List<string> idsWithName = new List<string>(); // name with id in brackets
-                foreach (User user in discordusers.Values) {
-                    // Don't add people we already know, don't add people who aren't real
-                    if (user.Username == null) continue;
-                    idsInCall.Add(user.UserId);
-                    idsWithName.Add("{0} ({1})".Format(user.Username!, user.UserId));
-                }
-
-                string[] _idsWithName = idsWithName.ToArray();
-                ImGui.TableNextColumn();
-                ImGui.SetNextItemWidth(200);
-                ImGui.Combo(
-                    "###IdsInCall",
-                    ref idInCall,
-                    _idsWithName,
-                    _idsWithName.Length
-                );
-
-                // Button to add entry to list
-                ImGui.TableNextColumn();
-                if (ImGui.Button("Add Entry")) {
-                    var i = this.individualAssignments.Count;
-                    this.individualAssignments.Add(new AssignmentEntry());
-                    this.individualAssignments[i].CharacterName = playersInParty[playerInParty];
-                    this.individualAssignments[i].DiscordId = idsInCall[idInCall];
-                }
-
                 // Extant entries
                 for (var i = 0; i < this.individualAssignments.Count; i++) {
                     ImGui.TableNextColumn();
@@ -240,10 +168,83 @@ public sealed class ConfigWindow: Window, IDisposable {
                     }
                 }
 
+                // New Entry dropdowns
+
+                // Prep: grap extant player names and discord ids
+                var extantPlayerNames = new List<string>();
+                foreach (var item in this.plugin.Configuration.IndividualAssignments) {
+                    extantPlayerNames.Add(item.CharacterName);
+                }
+
+                // XIV player name
+                // This is kinda transcribed from the overlay code
+                List<string> playersInParty;
+                unsafe {
+                    // Get party list and players in it
+                    var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
+                    var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList;
+                    var partyMemberCount = Math.Min(this.plugin.PartyList.Length, agentHud->PartyMemberCount);
+                    playersInParty = new List<string>();
+
+                    for (var i = 0; i < partyMemberCount; i++) {
+                        var partyMember = partyMemberList[i];
+                        var name = Marshal.PtrToStringUTF8((nint)partyMember.Name);
+                        // Don't add people we already know
+                        if (name == null || extantPlayerNames.Contains(name)) {
+                            continue;
+                        }
+
+                        playersInParty.Add(name);
+                    }
+
+                    var _playersInParty = playersInParty.ToArray();
+                    ImGui.TableNextColumn();
+                    ImGui.SetNextItemWidth(150);
+                    ImGui.Combo(
+                        "###PlayersInParty",
+                        ref this.playerInParty,
+                        _playersInParty,
+                        _playersInParty.Length
+                    );
+                }
+
+                // Discord ID
+                var discordusers = this.plugin.Connection.AllUsers;
+                var idsInCall = new List<string>(); // actual ids
+                var idsWithName = new List<string>(); // name with id in brackets
+                foreach (var user in discordusers.Values) {
+                    // Don't add people we already know, don't add people who aren't real
+                    if (user.Username == null) {
+                        continue;
+                    }
+
+                    idsInCall.Add(user.UserId);
+                    idsWithName.Add("{0} ({1})".Format(user.Username!, user.UserId));
+                }
+
+                var _idsWithName = idsWithName.ToArray();
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(200);
+                ImGui.Combo(
+                    "###IdsInCall",
+                    ref this.idInCall,
+                    _idsWithName,
+                    _idsWithName.Length
+                );
+
+                // Button to add entry to list
+                ImGui.TableNextColumn();
+                if (ImGui.Button("Add Entry")) {
+                    var i = this.individualAssignments.Count;
+                    this.individualAssignments.Add(new AssignmentEntry());
+                    this.individualAssignments[i].CharacterName = playersInParty[this.playerInParty];
+                    this.individualAssignments[i].DiscordId = idsInCall[this.idInCall];
+                }
+
                 ImGui.EndTable();
             }
 
-            if (ImGui.Button("Add new Assignment")) {
+            if (ImGui.Button("Add manual Assignment")) {
                 this.individualAssignments.Add(new AssignmentEntry());
             }
 

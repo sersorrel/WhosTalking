@@ -74,7 +74,7 @@ public sealed class Plugin: IDalamudPlugin {
 
 #if DEBUG
         // this.MainWindow.IsOpen = true;
-        // this.ConfigWindow.IsOpen = true;
+        this.ConfigWindow.IsOpen = true;
 #endif
         if (pluginInterface.Reason == PluginLoadReason.Installer) {
             this.ConfigWindow.IsOpen = true;
