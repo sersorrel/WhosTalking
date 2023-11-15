@@ -7,6 +7,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
 
 namespace WhosTalking.Windows;
@@ -181,20 +182,24 @@ public sealed class ConfigWindow: Window, IDisposable {
                 List<string> playersInParty;
                 unsafe {
                     // Get party list and players in it
-                    var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
-                    var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList;
-                    var partyMemberCount = Math.Min(this.plugin.PartyList.Length, agentHud->PartyMemberCount);
+                    var infoModule = Framework.Instance()->GetUiModule()->GetInfoModule();
+                    var partyInfoProxy = (InfoProxyParty*)infoModule->GetInfoProxyById(InfoProxyId.Party);
+                    var partyMemberCount = partyInfoProxy->InfoProxyCommonList.DataSize;
                     playersInParty = new List<string>();
 
-                    for (var i = 0; i < partyMemberCount; i++) {
-                        var partyMember = partyMemberList[i];
-                        var name = Marshal.PtrToStringUTF8((nint)partyMember.Name);
-                        // Don't add people we already know
-                        if (name == null || extantPlayerNames.Contains(name)) {
-                            continue;
-                        }
+                    if (partyInfoProxy != null) {
+                        for (uint i = 0; i < partyMemberCount; i++) {
+                            var entry = partyInfoProxy->InfoProxyCommonList.GetEntry(i);
+                            if (entry == null) continue;
+                        
+                            var name = Marshal.PtrToStringUTF8((nint)entry->Name);
+                            // Don't add people we already know
+                            if (name == null || extantPlayerNames.Contains(name)) {
+                                continue;
+                            }
 
-                        playersInParty.Add(name);
+                            playersInParty.Add(name);
+                        }
                     }
 
                     var _playersInParty = playersInParty.ToArray();
