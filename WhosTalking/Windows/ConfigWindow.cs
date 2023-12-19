@@ -104,35 +104,6 @@ public sealed class ConfigWindow: Window, IDisposable {
             );
         }
 
-        // Colour Assignments
-        ImGui.Separator();
-        ImGui.Text("Colour Assignments");
-
-        uint colspk = plugin.Configuration.ColourSpeaking;
-        if (ColourConfig("Speaking", colspk, ref colspk)) {
-            this.plugin.Configuration.ColourSpeaking = colspk;
-            this.plugin.Configuration.Save();
-        }
-
-        uint colmuted = plugin.Configuration.ColourMuted;
-        if (ColourConfig("Muted", colmuted, ref colmuted)) {
-            this.plugin.Configuration.ColourMuted = colmuted;
-            this.plugin.Configuration.Save();
-        }
-
-        uint coldeafened = plugin.Configuration.ColourDeafened;
-        if (ColourConfig("Deafened", coldeafened, ref coldeafened)) {
-            this.plugin.Configuration.ColourDeafened = coldeafened;
-            this.plugin.Configuration.Save();
-        }
-
-        if (this.plugin.Configuration.ShowUnmatchedUsers) {
-            uint colunm = plugin.Configuration.ColourUnmatched;
-            if (ColourConfig("Unmatched", colunm, ref colunm)) {
-                this.plugin.Configuration.ColourUnmatched = colunm;
-                this.plugin.Configuration.Save();
-            }
-        }
 
         ImGui.Separator();
         ImGui.Text("Potential issues:");
@@ -168,6 +139,36 @@ public sealed class ConfigWindow: Window, IDisposable {
 
         if (this.plugin.PluginInterface.IsDev || !this.plugin.PluginInterface.IsTesting) {
             ImGui.Text("If you report issues on Discord, ping me (sersorrel) or I will not see your message!");
+        }
+
+        // Colour Assignments
+        ImGui.Separator();
+        if (ImGui.TreeNode("Colour Assignments")) {
+            uint colspk = plugin.Configuration.ColourSpeaking;
+            if (ColourConfig("Speaking", colspk, ref colspk)) {
+                this.plugin.Configuration.ColourSpeaking = colspk;
+                this.plugin.Configuration.Save();
+            }
+
+            uint colmuted = plugin.Configuration.ColourMuted;
+            if (ColourConfig("Muted", colmuted, ref colmuted)) {
+                this.plugin.Configuration.ColourMuted = colmuted;
+                this.plugin.Configuration.Save();
+            }
+
+            uint coldeafened = plugin.Configuration.ColourDeafened;
+            if (ColourConfig("Deafened", coldeafened, ref coldeafened)) {
+                this.plugin.Configuration.ColourDeafened = coldeafened;
+                this.plugin.Configuration.Save();
+            }
+
+            if (this.plugin.Configuration.ShowUnmatchedUsers) {
+                uint colunm = plugin.Configuration.ColourUnmatched;
+                if (ColourConfig("Unmatched", colunm, ref colunm)) {
+                    this.plugin.Configuration.ColourUnmatched = colunm;
+                    this.plugin.Configuration.Save();
+                }
+            }
         }
 
         ImGui.Separator();
