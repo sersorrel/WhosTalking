@@ -27,7 +27,7 @@ public sealed class Configuration: IPluginConfiguration {
     // colours are ABGR
     public uint ColourUnmatched { get; set; } = 0xFF00FFFF; // yellow
     public uint ColourSpeaking { get; set; } = 0xFF00FF00; // green
-    public uint ColourMuted { get; set; } = 0xFF808000; // tealb
+    public uint ColourMuted { get; set; } = 0xFF808000; // teal
     public uint ColourDeafened { get; set; } = 0xFF0000FF; // red
 
     public void Initialize(DalamudPluginInterface pluginInterface) {
