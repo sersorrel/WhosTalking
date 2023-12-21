@@ -107,21 +107,20 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     private uint GetColour(User? user) {
-        // colours are ABGR
         if (user == null) {
-            return this.Configuration.ShowUnmatchedUsers ? 0xFF00FFFF : 0; // yellow or transparent
+            return this.Configuration.ShowUnmatchedUsers ? this.Configuration.ColourUnmatched : 0;
         }
 
         if (user.Speaking.GetValueOrDefault()) {
-            return 0xFF00FF00; // green
+            return this.Configuration.ColourSpeaking;
         }
 
         if (user.Deafened.GetValueOrDefault()) {
-            return 0xFF0000FF; // red
+            return this.Configuration.ColourDeafened;
         }
 
         if (user.Muted.GetValueOrDefault()) {
-            return 0xFF808000; // blue
+            return this.Configuration.ColourMuted;
         }
 
         return 0;

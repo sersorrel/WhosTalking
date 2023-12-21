@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Internal;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
@@ -19,6 +22,8 @@ public sealed class ConfigWindow: Window, IDisposable {
 
     private int playerInParty;
 
+    private IDalamudTextureWrap previewImage;
+
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
         ImGuiWindowFlags.AlwaysAutoResize
@@ -26,6 +31,11 @@ public sealed class ConfigWindow: Window, IDisposable {
         this.plugin = plugin;
         this.individualAssignments = new List<AssignmentEntry>();
         this.ResetListToConfig();
+
+        // Image for preview
+        var path = Path.Combine(this.plugin.PluginInterface.AssemblyLocation.Directory?.FullName!, "images");
+        path = Path.Combine(path, "previewImage.png");
+        this.previewImage = this.plugin.PluginInterface.UiBuilder.LoadImage(path);
     }
 
     public void Dispose() {}
@@ -82,7 +92,7 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         var showUnmatchedUsers = this.plugin.Configuration.ShowUnmatchedUsers;
-        if (ImGui.Checkbox("Show yellow boxes for unmatched users", ref showUnmatchedUsers)) {
+        if (ImGui.Checkbox("Show boxes for unmatched users", ref showUnmatchedUsers)) {
             this.plugin.Configuration.ShowUnmatchedUsers = showUnmatchedUsers;
             this.plugin.Configuration.Save();
         }
@@ -93,6 +103,7 @@ public sealed class ConfigWindow: Window, IDisposable {
                 + "\nthis setting has no effect."
             );
         }
+
 
         ImGui.Separator();
         ImGui.Text("Potential issues:");
@@ -128,6 +139,36 @@ public sealed class ConfigWindow: Window, IDisposable {
 
         if (this.plugin.PluginInterface.IsDev || !this.plugin.PluginInterface.IsTesting) {
             ImGui.Text("If you report issues on Discord, ping me (sersorrel) or I will not see your message!");
+        }
+
+        // Colour Assignments
+        ImGui.Separator();
+        if (ImGui.TreeNode("Colour Assignments")) {
+            uint colspk = plugin.Configuration.ColourSpeaking;
+            if (ColourConfig("Speaking", colspk, ref colspk)) {
+                this.plugin.Configuration.ColourSpeaking = colspk;
+                this.plugin.Configuration.Save();
+            }
+
+            uint colmuted = plugin.Configuration.ColourMuted;
+            if (ColourConfig("Muted", colmuted, ref colmuted)) {
+                this.plugin.Configuration.ColourMuted = colmuted;
+                this.plugin.Configuration.Save();
+            }
+
+            uint coldeafened = plugin.Configuration.ColourDeafened;
+            if (ColourConfig("Deafened", coldeafened, ref coldeafened)) {
+                this.plugin.Configuration.ColourDeafened = coldeafened;
+                this.plugin.Configuration.Save();
+            }
+
+            if (this.plugin.Configuration.ShowUnmatchedUsers) {
+                uint colunm = plugin.Configuration.ColourUnmatched;
+                if (ColourConfig("Unmatched", colunm, ref colunm)) {
+                    this.plugin.Configuration.ColourUnmatched = colunm;
+                    this.plugin.Configuration.Save();
+                }
+            }
         }
 
         ImGui.Separator();
@@ -335,6 +376,39 @@ public sealed class ConfigWindow: Window, IDisposable {
 
             ImGui.TreePop();
         }
+    }
+
+    // Represents one colour for colour configuation
+    private bool ColourConfig(string label, uint colour, ref uint rcolour) {
+
+        ImGui.Text(label);
+
+        Vector4 newcol = ImGui.ColorConvertU32ToFloat4(colour);
+        bool r = ImGui.ColorEdit4("###ColourEdit_{0}".Format(label), ref newcol);
+        if (r) { rcolour = ImGui.ColorConvertFloat4ToU32(newcol); }
+
+        ImGui.SameLine();
+        ImGui.Text("Preview");
+
+        // Draws a preview of what the outline will look like
+        // Isn't perfect but it's good enough
+        ImGui.SameLine();
+        Vector2 preview_min = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+        Vector2 preview_max = preview_min + new Vector2(25, 25);
+        ImGui.GetWindowDrawList().AddImage(
+            this.previewImage.ImGuiHandle,
+            preview_min, preview_max
+        );
+        ImGui.GetWindowDrawList().AddRect(
+            preview_min, preview_max,
+            ImGui.ColorConvertFloat4ToU32(newcol),
+            7,
+            ImDrawFlags.RoundCornersAll,
+            2
+        );
+        ImGui.Text("");
+
+        return r;
     }
 
     private void ResetListToConfig() {

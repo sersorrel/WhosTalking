@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 
@@ -22,6 +23,12 @@ public sealed class Configuration: IPluginConfiguration {
     public bool ShowIndicators { get; set; } = true;
     public bool ShowUnmatchedUsers { get; set; } = true;
     public int Version { get; set; } = 0;
+
+    // colours are ABGR
+    public uint ColourUnmatched { get; set; } = 0xFF00FFFF; // yellow
+    public uint ColourSpeaking { get; set; } = 0xFF00FF00; // green
+    public uint ColourMuted { get; set; } = 0xFF808000; // teal
+    public uint ColourDeafened { get; set; } = 0xFF0000FF; // red
 
     public void Initialize(DalamudPluginInterface pluginInterface) {
         this.pluginInterface = pluginInterface;
