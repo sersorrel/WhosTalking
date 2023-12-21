@@ -9,7 +9,6 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
 
@@ -22,7 +21,7 @@ public sealed class ConfigWindow: Window, IDisposable {
 
     private int playerInParty;
 
-    private IDalamudTextureWrap previewImage;
+    private readonly IDalamudTextureWrap previewImage;
 
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
@@ -144,27 +143,27 @@ public sealed class ConfigWindow: Window, IDisposable {
         // Colour Assignments
         ImGui.Separator();
         if (ImGui.TreeNode("Colour Assignments")) {
-            uint colspk = plugin.Configuration.ColourSpeaking;
-            if (ColourConfig("Speaking", colspk, ref colspk)) {
+            var colspk = this.plugin.Configuration.ColourSpeaking;
+            if (this.ColourConfig("Speaking", colspk, ref colspk)) {
                 this.plugin.Configuration.ColourSpeaking = colspk;
                 this.plugin.Configuration.Save();
             }
 
-            uint colmuted = plugin.Configuration.ColourMuted;
-            if (ColourConfig("Muted", colmuted, ref colmuted)) {
+            var colmuted = this.plugin.Configuration.ColourMuted;
+            if (this.ColourConfig("Muted", colmuted, ref colmuted)) {
                 this.plugin.Configuration.ColourMuted = colmuted;
                 this.plugin.Configuration.Save();
             }
 
-            uint coldeafened = plugin.Configuration.ColourDeafened;
-            if (ColourConfig("Deafened", coldeafened, ref coldeafened)) {
+            var coldeafened = this.plugin.Configuration.ColourDeafened;
+            if (this.ColourConfig("Deafened", coldeafened, ref coldeafened)) {
                 this.plugin.Configuration.ColourDeafened = coldeafened;
                 this.plugin.Configuration.Save();
             }
 
             if (this.plugin.Configuration.ShowUnmatchedUsers) {
-                uint colunm = plugin.Configuration.ColourUnmatched;
-                if (ColourConfig("Unmatched", colunm, ref colunm)) {
+                var colunm = this.plugin.Configuration.ColourUnmatched;
+                if (this.ColourConfig("Unmatched", colunm, ref colunm)) {
                     this.plugin.Configuration.ColourUnmatched = colunm;
                     this.plugin.Configuration.Save();
                 }
@@ -231,8 +230,10 @@ public sealed class ConfigWindow: Window, IDisposable {
                     if (partyInfoProxy != null) {
                         for (uint i = 0; i < partyMemberCount; i++) {
                             var entry = partyInfoProxy->InfoProxyCommonList.GetEntry(i);
-                            if (entry == null) continue;
-                        
+                            if (entry == null) {
+                                continue;
+                            }
+
                             var name = Marshal.PtrToStringUTF8((nint)entry->Name);
                             // Don't add people we already know
                             if (name == null || extantPlayerNames.Contains(name)) {
@@ -380,12 +381,13 @@ public sealed class ConfigWindow: Window, IDisposable {
 
     // Represents one colour for colour configuation
     private bool ColourConfig(string label, uint colour, ref uint rcolour) {
-
         ImGui.Text(label);
 
-        Vector4 newcol = ImGui.ColorConvertU32ToFloat4(colour);
-        bool r = ImGui.ColorEdit4("###ColourEdit_{0}".Format(label), ref newcol);
-        if (r) { rcolour = ImGui.ColorConvertFloat4ToU32(newcol); }
+        var newcol = ImGui.ColorConvertU32ToFloat4(colour);
+        var r = ImGui.ColorEdit4("###ColourEdit_{0}".Format(label), ref newcol);
+        if (r) {
+            rcolour = ImGui.ColorConvertFloat4ToU32(newcol);
+        }
 
         ImGui.SameLine();
         ImGui.Text("Preview");
@@ -393,19 +395,23 @@ public sealed class ConfigWindow: Window, IDisposable {
         // Draws a preview of what the outline will look like
         // Isn't perfect but it's good enough
         ImGui.SameLine();
-        Vector2 preview_min = ImGui.GetWindowPos() + ImGui.GetCursorPos();
-        Vector2 preview_max = preview_min + new Vector2(25, 25);
-        ImGui.GetWindowDrawList().AddImage(
-            this.previewImage.ImGuiHandle,
-            preview_min, preview_max
-        );
-        ImGui.GetWindowDrawList().AddRect(
-            preview_min, preview_max,
-            ImGui.ColorConvertFloat4ToU32(newcol),
-            7,
-            ImDrawFlags.RoundCornersAll,
-            2
-        );
+        var preview_min = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+        var preview_max = preview_min + new Vector2(25, 25);
+        ImGui.GetWindowDrawList()
+            .AddImage(
+                this.previewImage.ImGuiHandle,
+                preview_min,
+                preview_max
+            );
+        ImGui.GetWindowDrawList()
+            .AddRect(
+                preview_min,
+                preview_max,
+                ImGui.ColorConvertFloat4ToU32(newcol),
+                7,
+                ImDrawFlags.RoundCornersAll,
+                2
+            );
         ImGui.Text("");
 
         return r;

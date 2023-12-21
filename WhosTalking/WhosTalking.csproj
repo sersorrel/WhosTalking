@@ -31,13 +31,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <None Remove="images\previewImage.png" />
+        <None Remove="images\previewImage.png"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.12" />
-        <PackageReference Include="JetBrains.Annotations" Version="2022.3.1" />
-        <PackageReference Include="Websocket.Client" Version="5.0.0" />
+        <PackageReference Include="DalamudPackager" Version="2.1.12"/>
+        <PackageReference Include="JetBrains.Annotations" Version="2022.3.1"/>
+        <PackageReference Include="Websocket.Client" Version="5.0.0"/>
         <Reference Include="FFXIVClientStructs">
             <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
             <Private>false</Private>
@@ -67,7 +67,7 @@
             <Private>false</Private>
         </Reference>
         <Content Include="images\previewImage.png">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
         <Content Include="images\icon.png">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
