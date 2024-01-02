@@ -373,43 +373,10 @@ public sealed class Plugin: IDalamudPlugin {
 
                     // who else is talking?
                     if (this.Configuration.NonXivUsersDisplayMode != NonXivUsersDisplayMode.Off) {
-                        Vector2? pos = null;
-                        var node = (AtkResNode*)null; // lol lmao
-                        var lastGoodNode = (AtkResNode*)null;
+                        var pos = this.GetNonXivUsersPos(partyAddon);
 
-                        for (uint id = 10; id <= 19; id++) {
-                            node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                            if (node == null || !node->IsVisible) {
-                                continue;
-                            }
-
-                            lastGoodNode = node;
-                            var nodePos = GetNodePosition(node);
-                            if (pos == null || nodePos.Y > pos.Value.Y) {
-                                pos = nodePos;
-                            }
-                        }
-
-                        // chocobo (etc?)
-                        for (uint id = 180001; id <= 180007; id++) {
-                            node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                            if (node == null || !node->IsVisible) {
-                                continue;
-                            }
-
-                            lastGoodNode = node;
-                            var nodePos = GetNodePosition(node);
-                            if (pos == null || nodePos.Y > pos.Value.Y) {
-                                pos = nodePos;
-                            }
-                        }
-
-                        if (lastGoodNode != null) {
-                            var position = pos ?? new Vector2(0, 0);
-                            position.X += 27 * partyAddon->AtkUnitBase.Scale;
-                            // all these nodes are the same height, so it doesn't matter which one we have here
-                            position.Y += (lastGoodNode->Height - 10) * partyAddon->AtkUnitBase.Scale;
-
+                        if (pos != null) {
+                            var position = pos.Value;
                             var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
                             var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
                             var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
@@ -511,5 +478,61 @@ public sealed class Plugin: IDalamudPlugin {
         }
 
         return null;
+    }
+
+    private unsafe Vector2? GetNonXivUsersPos(AddonPartyList* partyAddon) {
+        switch (this.Configuration.NonXivUsersDisplayMode) {
+            case NonXivUsersDisplayMode.Off:
+                return null;
+            case NonXivUsersDisplayMode.BelowPartyList: {
+                Vector2? pos = null;
+                var node = (AtkResNode*)null; // lol lmao
+                var lastGoodNode = (AtkResNode*)null;
+
+                for (uint id = 10; id <= 19; id++) {
+                    node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                    if (node == null || !node->IsVisible) {
+                        continue;
+                    }
+
+                    lastGoodNode = node;
+                    var nodePos = GetNodePosition(node);
+                    if (pos == null || nodePos.Y > pos.Value.Y) {
+                        pos = nodePos;
+                    }
+                }
+
+                // chocobo (etc?)
+                for (uint id = 180001; id <= 180007; id++) {
+                    node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                    if (node == null || !node->IsVisible) {
+                        continue;
+                    }
+
+                    lastGoodNode = node;
+                    var nodePos = GetNodePosition(node);
+                    if (pos == null || nodePos.Y > pos.Value.Y) {
+                        pos = nodePos;
+                    }
+                }
+
+                if (lastGoodNode != null) {
+                    var position = pos ?? new Vector2(0, 0);
+                    position.X += 27 * partyAddon->AtkUnitBase.Scale;
+                    // all these nodes are the same height, so it doesn't matter which one we have here
+                    position.Y += (lastGoodNode->Height - 10) * partyAddon->AtkUnitBase.Scale;
+                    return position;
+                }
+
+                return null;
+            }
+            case NonXivUsersDisplayMode.ManuallyPositioned:
+                return new Vector2(this.Configuration.NonXivUsersX, this.Configuration.NonXivUsersY);
+            default:
+                throw new ArgumentOutOfRangeException(
+                    null,
+                    $"unknown config value for NonXivUsersDisplayMode: {this.Configuration.NonXivUsersDisplayMode}"
+                );
+        }
     }
 }

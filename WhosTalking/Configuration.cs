@@ -8,6 +8,7 @@ namespace WhosTalking;
 public enum NonXivUsersDisplayMode {
     Off = 0,
     BelowPartyList = 1,
+    ManuallyPositioned = 2,
 }
 
 [Serializable]
@@ -19,6 +20,8 @@ public sealed class Configuration: IPluginConfiguration {
     public string? AccessToken { get; set; }
     public List<AssignmentEntry> IndividualAssignments { get; set; } = new();
     public NonXivUsersDisplayMode NonXivUsersDisplayMode { get; set; } = NonXivUsersDisplayMode.BelowPartyList;
+    public int NonXivUsersX { get; set; } = 10;
+    public int NonXivUsersY { get; set; } = 10;
     public bool ShowIndicators { get; set; } = true;
     public bool ShowUnmatchedUsers { get; set; } = true;
 

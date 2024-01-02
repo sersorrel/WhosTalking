@@ -90,6 +90,23 @@ public sealed class ConfigWindow: Window, IDisposable {
             this.plugin.Configuration.Save();
         }
 
+        if (this.plugin.Configuration.NonXivUsersDisplayMode == NonXivUsersDisplayMode.ManuallyPositioned) {
+            var nonXivUsersX = this.plugin.Configuration.NonXivUsersX;
+            var nonXivUsersY = this.plugin.Configuration.NonXivUsersY;
+            ImGui.Text("Position:");
+            ImGui.SameLine();
+            if (ImGui.DragInt("###nonXivUsersX", ref nonXivUsersX)) {
+                this.plugin.Configuration.NonXivUsersX = nonXivUsersX;
+                this.plugin.Configuration.Save();
+            }
+
+            ImGui.SameLine();
+            if (ImGui.DragInt("###nonXivUsersY", ref nonXivUsersY)) {
+                this.plugin.Configuration.NonXivUsersY = nonXivUsersY;
+                this.plugin.Configuration.Save();
+            }
+        }
+
         var showUnmatchedUsers = this.plugin.Configuration.ShowUnmatchedUsers;
         if (ImGui.Checkbox("Show boxes for unmatched users", ref showUnmatchedUsers)) {
             this.plugin.Configuration.ShowUnmatchedUsers = showUnmatchedUsers;
