@@ -361,9 +361,9 @@ public class DiscordConnection {
                 string? guild, channel;
                 if (data.TryGetProperty("guild_id", out var guildElement)
                     && data.TryGetProperty("id", out var channelElement)
-                    && (guild = guildElement.GetString()) != null
                     && (channel = channelElement.GetString()) != null
                 ) {
+                    guild = guildElement.GetString();
                     this.Channel = new DiscordChannel(guild, channel);
                 } else {
                     this.Channel = null;
