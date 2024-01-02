@@ -17,11 +17,11 @@ namespace WhosTalking.Windows;
 public sealed class ConfigWindow: Window, IDisposable {
     private readonly List<AssignmentEntry> individualAssignments;
     private readonly Plugin plugin;
+
+    private readonly IDalamudTextureWrap previewImage;
     private int idInCall;
 
     private int playerInParty;
-
-    private readonly IDalamudTextureWrap previewImage;
 
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
