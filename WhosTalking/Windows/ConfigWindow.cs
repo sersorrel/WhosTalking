@@ -185,6 +185,8 @@ public sealed class ConfigWindow: Window, IDisposable {
                     this.plugin.Configuration.Save();
                 }
             }
+
+            ImGui.TreePop();
         }
 
         ImGui.Separator();
