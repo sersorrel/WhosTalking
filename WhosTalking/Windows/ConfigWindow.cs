@@ -299,14 +299,26 @@ public sealed class ConfigWindow: Window, IDisposable {
                 );
 
                 // Add entry to list
-                var _charaName = (this.playerInPartyIdx < playersInParty.Count) ? playersInParty[this.playerInPartyIdx] : "";
-                var _discId = (this.playerInPartyIdx < idsInCall.Count) ? idsInCall[this.idInCallIdx] : "";
                 ImGui.TableNextColumn();
                 if (ImGui.Button("Add Entry")) {
+                    var _charaName = (this.playerInPartyIdx < playersInParty.Count) ? playersInParty[this.playerInPartyIdx] : "";
+                    var _discId = (this.playerInPartyIdx < idsInCall.Count) ? idsInCall[this.idInCallIdx] : "";
+
                     var i = this.individualAssignments.Count;
                     this.individualAssignments.Add(new AssignmentEntry());
+
                     this.individualAssignments[i].CharacterName = _charaName;
                     this.individualAssignments[i].DiscordId = _discId;
+                }
+
+                // Blank entry button
+                ImGui.SameLine();
+                if (ImGui.Button("Add blank Entry")) {
+                    var i = this.individualAssignments.Count;
+                    this.individualAssignments.Add(new AssignmentEntry());
+
+                    this.individualAssignments[i].CharacterName = "";
+                    this.individualAssignments[i].DiscordId = "";
                 }
 
                 ImGui.EndTable();
