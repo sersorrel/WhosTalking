@@ -17,11 +17,10 @@ namespace WhosTalking.Windows;
 public sealed class ConfigWindow: Window, IDisposable {
     private readonly List<AssignmentEntry> individualAssignments;
     private readonly Plugin plugin;
-
     private readonly IDalamudTextureWrap previewImage;
-    private int idInCall;
 
-    private int playerInParty;
+    private int playerInPartyIdx;
+    private int idInCallIdx;
 
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
@@ -268,7 +267,7 @@ public sealed class ConfigWindow: Window, IDisposable {
                     ImGui.SetNextItemWidth(150);
                     ImGui.Combo(
                         "###PlayersInParty",
-                        ref this.playerInParty,
+                        ref this.playerInPartyIdx,
                         _playersInParty,
                         _playersInParty.Length
                     );
@@ -293,18 +292,32 @@ public sealed class ConfigWindow: Window, IDisposable {
                 ImGui.SetNextItemWidth(200);
                 ImGui.Combo(
                     "###IdsInCall",
-                    ref this.idInCall,
+                    ref this.idInCallIdx,
                     _idsWithName,
                     _idsWithName.Length
                 );
 
-                // Button to add entry to list
+                // Add entry to list
                 ImGui.TableNextColumn();
                 if (ImGui.Button("Add Entry")) {
+                    var _charaName = (this.playerInPartyIdx < playersInParty.Count) ? playersInParty[this.playerInPartyIdx] : "";
+                    var _discId = (this.playerInPartyIdx < idsInCall.Count) ? idsInCall[this.idInCallIdx] : "";
+
                     var i = this.individualAssignments.Count;
                     this.individualAssignments.Add(new AssignmentEntry());
-                    this.individualAssignments[i].CharacterName = playersInParty[this.playerInParty];
-                    this.individualAssignments[i].DiscordId = idsInCall[this.idInCall];
+
+                    this.individualAssignments[i].CharacterName = _charaName;
+                    this.individualAssignments[i].DiscordId = _discId;
+                }
+
+                // Blank entry button
+                ImGui.SameLine();
+                if (ImGui.Button("Add blank Entry")) {
+                    var i = this.individualAssignments.Count;
+                    this.individualAssignments.Add(new AssignmentEntry());
+
+                    this.individualAssignments[i].CharacterName = "";
+                    this.individualAssignments[i].DiscordId = "";
                 }
 
                 ImGui.EndTable();
