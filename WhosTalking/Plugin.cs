@@ -79,6 +79,8 @@ public sealed class Plugin: IDalamudPlugin {
         if (pluginInterface.Reason == PluginLoadReason.Installer) {
             this.ConfigWindow.IsOpen = true;
         }
+
+        this.PluginLog.Information("Who's Talking is ready for action!");
     }
 
     public Configuration Configuration { get; init; }

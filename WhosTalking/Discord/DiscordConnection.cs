@@ -34,6 +34,7 @@ public class DiscordConnection {
         this.webSocket.ReconnectTimeout = TimeSpan.FromMinutes(5);
         this.webSocket.MessageReceived.Subscribe(this.OnMessage);
         this.webSocket.DisconnectionHappened.Subscribe(this.OnError);
+        this.webSocket.ReconnectionHappened.Subscribe(this.OnReconnect);
         this.webSocket.Start();
     }
 
@@ -153,7 +154,13 @@ public class DiscordConnection {
         this.Authenticate();
     }
 
+    private void OnReconnect(ReconnectionInfo info) {
+        this.plugin.PluginLog.Debug("reconnect, because: {type}", info.Type);
+        // no need to explicitly subscribe here, we'll do it on the next READY
+    }
+
     private void OnError(DisconnectionInfo info) {
+        this.plugin.PluginLog.Debug("disconnected, because: {type}", info.Type);
         this.userId = null;
         this.currentChannel = null; // bypass the setter, no point sending an unsubscribe when we're disconnected
         // this is called during dispose, when I guess AllUsers is already gone??
