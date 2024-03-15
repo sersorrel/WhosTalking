@@ -49,7 +49,7 @@ public sealed class ConfigWindow: Window, IDisposable {
             if (self != null) {
                 ImGui.TextUnformatted($"Authenticated as {self.Username}#{self.Discriminator}.");
             } else {
-                ImGui.Text("Connected, but not authenticated. (Maybe you're not in a voice call?)");
+                ImGui.Text("Connected to Discord, but not in a call.");
             }
         } else {
             ImGui.Text("Not connected to Discord. (Open the Discord app to get started!)");
