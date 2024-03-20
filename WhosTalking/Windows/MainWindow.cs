@@ -131,6 +131,10 @@ public sealed class MainWindow: Window, IDisposable {
             }
         }
 
+        if (ImGui.Button("Pop arRPC warning")) {
+            this.plugin.Connection.ShowArRpcWarning();
+        }
+
         ImGui.Separator();
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Cog)) {
             this.plugin.OpenConfigUi();

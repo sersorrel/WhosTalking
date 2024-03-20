@@ -5,6 +5,8 @@ using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Dalamud.Interface.ImGuiNotification;
+using Dalamud.Interface.Internal.Notifications;
 using Websocket.Client;
 
 namespace WhosTalking.Discord;
@@ -17,6 +19,7 @@ public class DiscordConnection {
     private readonly WebsocketClient webSocket;
     private DiscordChannel? currentChannel;
     private string? userId;
+    private bool isArRpc = false;
 
     public DiscordConnection(Plugin plugin) {
         this.plugin = plugin;
@@ -154,6 +157,18 @@ public class DiscordConnection {
         this.Authenticate();
     }
 
+    public void ShowArRpcWarning() {
+        this.plugin.PluginLog.Warning("arRPC detected, Who's Talking will not function");
+        this.plugin.NotificationManager.AddNotification(new Notification {
+            Title = "Unsupported Discord client detected",
+            Content = "It seems like you're using a custom Discord client (e.g. Vesktop). Because of limitations in these clients, Who's Talking does not work with them.\n\nPlease don't report this as a bug!",
+            Minimized = false,
+            Type = NotificationType.Warning,
+            InitialDuration = TimeSpan.MaxValue,
+            ShowIndeterminateIfNoExpiry = false,
+        });
+    }
+
     private void OnReconnect(ReconnectionInfo info) {
         this.plugin.PluginLog.Debug("reconnect, because: {type}", info.Type);
         // no need to explicitly subscribe here, we'll do it on the next READY
@@ -209,9 +224,23 @@ public class DiscordConnection {
                 switch (evt.GetString()) {
                     case "READY": {
                         // connected, ready to do auth
-                        var version = root.GetProperty("data").GetProperty("v").GetInt64();
+                        var data = root.GetProperty("data");
+                        var version = data.GetProperty("v").GetInt64();
                         if (version != 1) {
                             this.plugin.PluginLog.Warning("unexpected api version {version}", version);
+                        }
+
+                        try {
+                            this.isArRpc = root.GetProperty("nonce").GetString() != null
+                                && data.TryGetProperty("user", out var user)
+                                && user.GetProperty("id").GetString() == "1045800378228281345"
+                                && user.GetProperty("username").GetString() == "arRPC";
+                        } catch (Exception e) {
+                            this.plugin.PluginLog.Information(e, "arRPC check failed, ignoring");
+                            this.isArRpc = false;
+                        }
+                        if (this.isArRpc) {
+                            this.ShowArRpcWarning();
                         }
 
                         this.Authenticate();

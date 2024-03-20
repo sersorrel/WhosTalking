@@ -36,7 +36,8 @@ public sealed class Plugin: IDalamudPlugin {
         IObjectTable objectTable,
         IClientState clientState,
         ICommandManager commandManager,
-        IPluginLog pluginLog
+        IPluginLog pluginLog,
+        INotificationManager notificationManager
     ) {
         this.PluginInterface = pluginInterface;
         this.GameGui = gameGui;
@@ -45,6 +46,7 @@ public sealed class Plugin: IDalamudPlugin {
         this.ClientState = clientState;
         this.CommandManager = commandManager;
         this.PluginLog = pluginLog;
+        this.NotificationManager = notificationManager;
 
         this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.Configuration.Initialize(this.PluginInterface);
@@ -93,6 +95,7 @@ public sealed class Plugin: IDalamudPlugin {
     internal IClientState ClientState { get; init; }
     internal ICommandManager CommandManager { get; init; }
     internal IPluginLog PluginLog { get; init; }
+    internal INotificationManager NotificationManager { get; init; }
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
