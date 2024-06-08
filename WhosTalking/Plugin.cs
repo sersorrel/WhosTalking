@@ -324,6 +324,20 @@ public sealed class Plugin: IDalamudPlugin {
                             // GroupManager wants the alliance group index (that is, either 0 or 1 in a regular alliance raid)
                             // this game is made out of spaghetti
 
+                            // a year later:
+                            // my hypothesis is that GroupManager handles exclusively "normal" alliance raids (with the two bonus party list hud elements),
+                            // and does not handle anything like DRS (or BA??) where you have more than two other groups (that aren't shown on-screen).
+                            // the questions are:
+                            // - is IPCR the source of truth for "weird" raids like those? (if you change party comp in DSR, does IPCR reflect that?)
+                            // - is IPCR populated for "normal" alliance raids if you didn't enter via PF?
+                            // if so: I should drop GroupManager entirely and use IPCR for all >8man raids
+                            // otherwise: death
+                            // maybe "use GroupManager if GroupCount is 3, else use IPCR"??
+                            // how does the *game* tell if GroupManager has valid data?
+                            // help i need @someone (to reverse more stuff for me)
+
+                            // ...actually this is all kinda moot, because other groups aren't visible in DRS...
+
                             var groupManager = GroupManager.Instance();
                             var groupMemberCount = InfoProxyCrossRealm.GetGroupMemberCount(group);
                             for (var memberIdx = 0; memberIdx < groupMemberCount; memberIdx++) {
@@ -332,6 +346,15 @@ public sealed class Plugin: IDalamudPlugin {
                                     allianceWindowNumber - 1,
                                     memberIdx
                                 );
+                                if (member is null) {
+                                    // this is quite bad: we thought there was a party member here, but GroupManager has no knowledge of them
+                                    // this can happen in e.g. PF state for DRS (have someone join alliance F)
+                                    // generally speaking, passing group indices from IPCR into GroupManager seems like a bad idea...
+                                    // probably should instead use InfoProxyCrossRealm.GetGroupMember() here, iff it would work strictly better
+                                    // see above comments for more details
+                                    // for the time being, to avoid crashing: just continue
+                                    continue;
+                                }
                                 // var member = groupManager->GetAllianceMemberByIndex(
                                 //     (group * agentHud->RaidGroupSize) + memberIdx
                                 // );
@@ -369,6 +392,8 @@ public sealed class Plugin: IDalamudPlugin {
                                     this.PluginLog.Error(
                                         $"bad alliance window {allianceWindowNumber}, are you doing DRS or something"
                                     );
+                                    // yes they are doing DRS or something
+                                    // (but we never actually get this far in that case)
                                 }
                             }
 
