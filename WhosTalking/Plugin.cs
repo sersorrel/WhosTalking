@@ -301,8 +301,14 @@ public sealed class Plugin: IDalamudPlugin {
                     var allianceWindow2 = (AtkUnitBase*)this.GameGui.GetAddonByName("_AllianceList2");
                     var allianceWindow1Visible =
                         (nint)allianceWindow1 != nint.Zero
-                        && allianceWindow1->IsVisible; // these checks don't actually seem to work???
-                    var allianceWindow2Visible = (nint)allianceWindow2 != nint.Zero && allianceWindow2->IsVisible;
+                        && allianceWindow1->IsVisible
+                        && (allianceWindow1->VisibilityFlags & 1) == 0
+                        && (allianceWindow1->VisibilityFlags & 4) == 0;
+                    var allianceWindow2Visible =
+                        (nint)allianceWindow2 != nint.Zero
+                        && allianceWindow2->IsVisible
+                        && (allianceWindow2->VisibilityFlags & 1) == 0
+                        && (allianceWindow2->VisibilityFlags & 4) == 0;
                     // IsInAllianceRaid is true even in the pre-raid PF state, argh...
                     if (ipcr->IsInAllianceRaid == 1 && allianceWindow1Visible && allianceWindow2Visible) {
                         // PluginLog.Warning("FRAME");
