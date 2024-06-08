@@ -135,6 +135,31 @@ public sealed class MainWindow: Window, IDisposable {
             this.plugin.Connection.ShowArRpcWarning();
         }
 
+        if (ImGui.Button("dump alliance data to xllog")) {
+            this.plugin.PluginLog.Warning("===========================");
+            var groupManager = GroupManager.Instance();
+            var ipcr = InfoProxyCrossRealm.Instance();
+            for (var group = 0; group < 6; group++) {
+                for (var idx = 0; idx < 8; idx++) {
+                    var member = groupManager->GetAllianceMemberByGroupAndIndex(group, idx);
+                    if (member is null) {
+                        this.plugin.PluginLog.Warning($"AA {group} {idx}: null");
+                    } else {
+                        this.plugin.PluginLog.Warning($"AA {group} {idx}: is {Marshal.PtrToStringUTF8((nint)member->Name)}");
+                    }
+                    var crossRealmMember = InfoProxyCrossRealm.GetGroupMember((uint)idx, group);
+                    if (idx >= InfoProxyCrossRealm.GetGroupMemberCount(group)) {
+                        this.plugin.PluginLog.Warning("this next one is invalid");
+                    }
+                    if (crossRealmMember is null) {
+                        this.plugin.PluginLog.Warning($"BB {group} {idx}: null");
+                    } else {
+                        this.plugin.PluginLog.Warning($"BB {group} {idx}: is {Marshal.PtrToStringUTF8((nint)crossRealmMember->Name)}");
+                    }
+                }
+            }
+        }
+
         ImGui.Separator();
         if (ImGuiComponents.IconButton(FontAwesomeIcon.Cog)) {
             this.plugin.OpenConfigUi();
