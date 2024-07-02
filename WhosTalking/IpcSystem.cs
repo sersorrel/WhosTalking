@@ -9,7 +9,7 @@ public class IpcSystem: IDisposable {
     private readonly ICallGateProvider<string, int> cgGetUserState;
     private readonly Plugin plugin;
 
-    public IpcSystem(Plugin plugin, DalamudPluginInterface pluginInterface) {
+    public IpcSystem(Plugin plugin, IDalamudPluginInterface pluginInterface) {
         this.plugin = plugin;
 
         this.cgGetUserState = pluginInterface.GetIpcProvider<string, int>("WT.GetUserState");

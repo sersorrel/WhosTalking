@@ -10,7 +10,6 @@ using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using Dalamud.Utility.Numerics;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
@@ -30,14 +29,15 @@ public sealed class Plugin: IDalamudPlugin {
     public WindowSystem WindowSystem = new("WhosTalking");
 
     public Plugin(
-        DalamudPluginInterface pluginInterface,
+        IDalamudPluginInterface pluginInterface,
         IGameGui gameGui,
         IPartyList partyList,
         IObjectTable objectTable,
         IClientState clientState,
         ICommandManager commandManager,
         IPluginLog pluginLog,
-        INotificationManager notificationManager
+        INotificationManager notificationManager,
+        ITextureProvider textureProvider
     ) {
         this.PluginInterface = pluginInterface;
         this.GameGui = gameGui;
@@ -47,6 +47,7 @@ public sealed class Plugin: IDalamudPlugin {
         this.CommandManager = commandManager;
         this.PluginLog = pluginLog;
         this.NotificationManager = notificationManager;
+        this.TextureProvider = textureProvider;
 
         this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.Configuration.Initialize(this.PluginInterface);
@@ -75,7 +76,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.disposeActions.Push(() => this.CommandManager.RemoveHandler("/whostalking"));
 
 #if DEBUG
-        // this.MainWindow.IsOpen = true;
+        if (pluginInterface.Reason == PluginLoadReason.Reload) {
+            this.MainWindow.IsOpen = true;
+        }
         // this.ConfigWindow.IsOpen = true;
 #endif
         if (pluginInterface.Reason == PluginLoadReason.Installer) {
@@ -91,11 +94,12 @@ public sealed class Plugin: IDalamudPlugin {
     internal MainWindow MainWindow { get; init; }
     internal IPartyList PartyList { get; init; }
     internal IObjectTable ObjectTable { get; init; }
-    internal DalamudPluginInterface PluginInterface { get; init; }
+    internal IDalamudPluginInterface PluginInterface { get; init; }
     internal IClientState ClientState { get; init; }
     internal ICommandManager CommandManager { get; init; }
     internal IPluginLog PluginLog { get; init; }
     internal INotificationManager NotificationManager { get; init; }
+    internal ITextureProvider TextureProvider { get; init; }
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
@@ -155,7 +159,7 @@ public sealed class Plugin: IDalamudPlugin {
             return;
         }
 
-        var colNode = &partyAddon->PartyMember[idx].ClassJobIcon->AtkResNode;
+        var colNode = &partyAddon->PartyMembers[idx].ClassJobIcon->AtkResNode;
         if ((nint)colNode == nint.Zero) { // this seems like it's null sometimes? set up cwp via pf, exception on join
             return;
         }
@@ -249,7 +253,7 @@ public sealed class Plugin: IDalamudPlugin {
                         var memberCount = InfoProxyCrossRealm.GetGroupMemberCount(ipcr->LocalPlayerGroupIndex);
                         for (var i = 0; i < memberCount; i++) {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
-                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!);
+                            var user = this.XivToDiscord(member->NameString);
                             this.DrawIndicator(drawList, partyAddon, i, user);
                             knownUsers.Add(user!);
                         }
@@ -257,7 +261,7 @@ public sealed class Plugin: IDalamudPlugin {
                         var memberCount = InfoProxyCrossRealm.GetPartyMemberCount();
                         for (var i = 0; i < memberCount; i++) {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
-                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)member->Name)!);
+                            var user = this.XivToDiscord(member->NameString);
                             this.DrawIndicator(drawList, partyAddon, i, user);
                             knownUsers.Add(user!);
                         }
@@ -273,7 +277,7 @@ public sealed class Plugin: IDalamudPlugin {
                         // ("hide party list when solo", under Character Configuration > UI Settings > Party List)
                         // because that would draw the indicator on top of e.g. our chocobo
                         var node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(10);
-                        if (node != null && node->IsVisible) {
+                        if (node != null && node->IsVisible()) {
                             this.DrawIndicator(drawList, partyAddon, 0, this.Connection.Self);
                             knownUsers.Add(this.Connection.Self!);
                         }
@@ -281,12 +285,12 @@ public sealed class Plugin: IDalamudPlugin {
 
                     if (this.PartyList.Length > 0) {
                         // regular party (or cross-world party in an instance, which works out the same)
-                        var agentHud = Framework.Instance()->GetUiModule()->GetAgentModule()->GetAgentHUD();
+                        var agentHud = AgentHUD.Instance();
                         // take the lower of these two; we don't want to index off the end of PartyMemberList,
                         // but PartyList seems to have a better idea of how many *people* are in the party
                         // (as opposed to e.g. a chocobo)
                         var partyMemberCount = Math.Min(this.PartyList.Length, agentHud->PartyMemberCount);
-                        var partyMemberList = (HudPartyMember*)agentHud->PartyMemberList; // length 10
+                        var partyMemberList = agentHud->PartyMembers; // length 10
                         for (var i = 0; i < partyMemberCount; i++) {
                             var partyMember = partyMemberList[i];
                             // TODO: look at partyMember.Object (and this.PartyList)
@@ -348,7 +352,7 @@ public sealed class Plugin: IDalamudPlugin {
                             var groupMemberCount = InfoProxyCrossRealm.GetGroupMemberCount(group);
                             for (var memberIdx = 0; memberIdx < groupMemberCount; memberIdx++) {
                                 // PluginLog.Information($"getting member [{group}][{memberIdx}] with index {allianceWindowNumber - 1}");
-                                var member = groupManager->GetAllianceMemberByGroupAndIndex(
+                                var member = groupManager->MainGroup.GetAllianceMemberByGroupAndIndex(
                                     allianceWindowNumber - 1,
                                     memberIdx
                                 );
@@ -361,6 +365,7 @@ public sealed class Plugin: IDalamudPlugin {
                                     // for the time being, to avoid crashing: just continue
                                     continue;
                                 }
+
                                 // var member = groupManager->GetAllianceMemberByIndex(
                                 //     (group * agentHud->RaidGroupSize) + memberIdx
                                 // );
@@ -376,7 +381,7 @@ public sealed class Plugin: IDalamudPlugin {
                                 //     PluginLog.Information($"SKIPPING {group} {memberIdx}");
                                 //     continue;
                                 // }
-                                var name = Marshal.PtrToStringUTF8((nint)member->Name)!;
+                                var name = member->NameString;
                                 if (name == "") {
                                     // they left the raid, don't draw an indicator for them
                                     // for whatever reason they still show up in the crossworld infoproxy even if they leave
@@ -527,7 +532,7 @@ public sealed class Plugin: IDalamudPlugin {
 
                 for (uint id = 10; id <= 19; id++) {
                     node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                    if (node == null || !node->IsVisible) {
+                    if (node == null || !node->IsVisible()) {
                         continue;
                     }
 
@@ -541,7 +546,7 @@ public sealed class Plugin: IDalamudPlugin {
                 // chocobo (etc?)
                 for (uint id = 180001; id <= 180007; id++) {
                     node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                    if (node == null || !node->IsVisible) {
+                    if (node == null || !node->IsVisible()) {
                         continue;
                     }
 

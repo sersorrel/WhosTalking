@@ -15,7 +15,7 @@ public enum NonXivUsersDisplayMode {
 public sealed class Configuration: IPluginConfiguration {
     // the below exist just to make saving less cumbersome
     [NonSerialized]
-    private DalamudPluginInterface? pluginInterface;
+    private IDalamudPluginInterface? pluginInterface;
 
     public string? AccessToken { get; set; }
     public List<AssignmentEntry> IndividualAssignments { get; set; } = new();
@@ -32,7 +32,7 @@ public sealed class Configuration: IPluginConfiguration {
     public uint ColourDeafened { get; set; } = 0xFF0000FF; // red
     public int Version { get; set; } = 0;
 
-    public void Initialize(DalamudPluginInterface pluginInterface) {
+    public void Initialize(IDalamudPluginInterface pluginInterface) {
         this.pluginInterface = pluginInterface;
     }
 

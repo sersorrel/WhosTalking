@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using Dalamud.Interface.Colors;
-using Dalamud.Interface.Internal;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
 
@@ -17,10 +15,10 @@ namespace WhosTalking.Windows;
 public sealed class ConfigWindow: Window, IDisposable {
     private readonly List<AssignmentEntry> individualAssignments;
     private readonly Plugin plugin;
-    private readonly IDalamudTextureWrap previewImage;
+    private readonly ISharedImmediateTexture previewImage;
+    private int idInCallIdx;
 
     private int playerInPartyIdx;
-    private int idInCallIdx;
 
     public ConfigWindow(Plugin plugin): base(
         "Who's Talking configuration",
@@ -33,7 +31,8 @@ public sealed class ConfigWindow: Window, IDisposable {
         // Image for preview
         var path = Path.Combine(this.plugin.PluginInterface.AssemblyLocation.Directory?.FullName!, "images");
         path = Path.Combine(path, "previewImage.png");
-        this.previewImage = this.plugin.PluginInterface.UiBuilder.LoadImage(path);
+        // this.previewImage = this.plugin.PluginInterface.UiBuilder.LoadImage(path);
+        this.previewImage = this.plugin.TextureProvider.GetFromFile(path);
     }
 
     public void Dispose() {}
@@ -240,8 +239,7 @@ public sealed class ConfigWindow: Window, IDisposable {
                 List<string> playersInParty;
                 unsafe {
                     // Get party list and players in it
-                    var infoModule = Framework.Instance()->GetUiModule()->GetInfoModule();
-                    var partyInfoProxy = (InfoProxyParty*)infoModule->GetInfoProxyById(InfoProxyId.Party);
+                    var partyInfoProxy = InfoProxyPartyMember.Instance();
                     var partyMemberCount = partyInfoProxy->InfoProxyCommonList.DataSize;
                     playersInParty = new List<string>();
 
@@ -252,7 +250,7 @@ public sealed class ConfigWindow: Window, IDisposable {
                                 continue;
                             }
 
-                            var name = Marshal.PtrToStringUTF8((nint)entry->Name);
+                            var name = entry->NameString;
                             // Don't add people we already know
                             if (name == null || extantPlayerNames.Contains(name)) {
                                 continue;
@@ -300,8 +298,10 @@ public sealed class ConfigWindow: Window, IDisposable {
                 // Add entry to list
                 ImGui.TableNextColumn();
                 if (ImGui.Button("Add Entry")) {
-                    var _charaName = (this.playerInPartyIdx < playersInParty.Count) ? playersInParty[this.playerInPartyIdx] : "";
-                    var _discId = (this.playerInPartyIdx < idsInCall.Count) ? idsInCall[this.idInCallIdx] : "";
+                    var _charaName = this.playerInPartyIdx < playersInParty.Count
+                        ? playersInParty[this.playerInPartyIdx]
+                        : "";
+                    var _discId = this.playerInPartyIdx < idsInCall.Count ? idsInCall[this.idInCallIdx] : "";
 
                     var i = this.individualAssignments.Count;
                     this.individualAssignments.Add(new AssignmentEntry());
@@ -429,12 +429,16 @@ public sealed class ConfigWindow: Window, IDisposable {
         ImGui.SameLine();
         var preview_min = ImGui.GetWindowPos() + ImGui.GetCursorPos();
         var preview_max = preview_min + new Vector2(25, 25);
-        ImGui.GetWindowDrawList()
-            .AddImage(
-                this.previewImage.ImGuiHandle,
-                preview_min,
-                preview_max
-            );
+        var img = this.previewImage.GetWrapOrDefault();
+        if (img is not null) {
+            ImGui.GetWindowDrawList()
+                .AddImage(
+                    img.ImGuiHandle,
+                    preview_min,
+                    preview_max
+                );
+        }
+
         ImGui.GetWindowDrawList()
             .AddRect(
                 preview_min,
