@@ -20,13 +20,15 @@ public sealed class ConfigWindow: Window, IDisposable {
 
     private int playerInPartyIdx;
 
-    public ConfigWindow(Plugin plugin): base(
-        "Who's Talking configuration",
-        ImGuiWindowFlags.AlwaysAutoResize
-    ) {
+    public ConfigWindow(Plugin plugin): base("Who's Talking configuration") {
         this.plugin = plugin;
         this.individualAssignments = new List<AssignmentEntry>();
         this.ResetListToConfig();
+
+        this.SizeConstraints = new WindowSizeConstraints {
+            MinimumSize = new Vector2(600, 300),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
+        };
 
         // Image for preview
         var path = Path.Combine(this.plugin.PluginInterface.AssemblyLocation.Directory?.FullName!, "images");
@@ -78,6 +80,7 @@ public sealed class ConfigWindow: Window, IDisposable {
         ImGui.AlignTextToFramePadding();
         ImGui.Text("List speaking Discord users not in your party:");
         ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
         if (ImGui.Combo(
                 "###nonXivUsersDisplayMode",
                 ref nonXivUsersDisplayMode,
