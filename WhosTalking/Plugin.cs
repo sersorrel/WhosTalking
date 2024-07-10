@@ -82,6 +82,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, "_PartyList", this.AtkDrawPartyList);
         this.disposeActions.Push(() => this.AddonLifecycle.UnregisterListener(this.AtkDrawPartyList));
 
+        this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, ["_AllianceList1", "_AllianceList2"], this.AtkDrawAllianceList);
+        this.disposeActions.Push(() => this.AddonLifecycle.UnregisterListener(this.AtkDrawAllianceList));
+
 #if DEBUG
         if (pluginInterface.Reason == PluginLoadReason.Reload) {
             this.MainWindow.IsOpen = true;
@@ -182,6 +185,33 @@ public sealed class Plugin: IDalamudPlugin {
         }
     }
 
+    private unsafe void AtkDrawAllianceList(AddonEvent evt, AddonArgs args) {
+        if (this.Configuration.IndicatorStyle != IndicatorStyle.Atk) {
+            return;
+        }
+
+        var allianceList = (AtkUnitBase*)args.Addon;
+        if (allianceList == null) {
+            return;
+        }
+
+        var offset = allianceList->NameString.EndsWith('1') ? 8 : 16;
+        for (var i = 0; i < 8; i++) {
+            var memberNode = allianceList->UldManager.NodeList[9 - i]; // 9 to 2
+            if (memberNode == null) continue;
+            if (!memberNode->IsVisible()) continue;
+            var componentNode = memberNode->GetComponent();
+            if (componentNode == null) continue;
+            var jobIconGlow = componentNode->GetImageNodeById(9);
+            if (jobIconGlow == null) continue;
+            if ((this.validSlots & (1 << (i + offset))) != 0) {
+                jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
+            } else { // reset the colour to normal
+                jobIconGlow->Color.RGBA = 0xffffffff;
+            }
+        }
+    }
+
     private void Draw() {
         this.WindowSystem.Draw();
         if (this.Connection?.Self != null || this.ConfigWindow.IsOpen) {
@@ -238,19 +268,26 @@ public sealed class Plugin: IDalamudPlugin {
         // var gridNode = comp->UldManager.NodeList[2]->ChildNode;
         var gridNode = comp->UldManager.SearchNodeById(4);
 
-        var indicatorStart = GetNodePosition(gridNode);
-        var scale = allianceAddon->Scale;
-        var indicatorSize = new Vector2(gridNode->Width, gridNode->Height) * scale;
-        var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
-        var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-        drawList.AddRect(
-            indicatorMin,
-            indicatorMax,
-            this.GetColour(user),
-            7 * scale,
-            ImDrawFlags.RoundCornersAll,
-            (3 * scale) - 1
-        );
+        if (this.Configuration.IndicatorStyle == IndicatorStyle.Imgui) {
+            var indicatorStart = GetNodePosition(gridNode);
+            var scale = allianceAddon->Scale;
+            var indicatorSize = new Vector2(gridNode->Width, gridNode->Height) * scale;
+            var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
+            var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
+            drawList.AddRect(
+                indicatorMin,
+                indicatorMax,
+                this.GetColour(user),
+                7 * scale,
+                ImDrawFlags.RoundCornersAll,
+                (3 * scale) - 1
+            );
+        } else if (this.Configuration.IndicatorStyle == IndicatorStyle.Atk) {
+            var colour = this.GetColour(user);
+            var jobIconGlowNode = comp->UldManager.SearchNodeById(9);
+            jobIconGlowNode->Color.RGBA = colour;
+            // visibility will be handled in predraw
+        }
     }
 
     private unsafe void DrawOverlay() {
@@ -441,6 +478,7 @@ public sealed class Plugin: IDalamudPlugin {
 
                                 var user = this.XivToDiscord(name);
                                 // PluginLog.Information($"[{group}][{memberIdx}]: {Marshal.PtrToStringUTF8((nint)member->Name)!}");
+                                validSlots |= 1 << (memberIdx + (8 * allianceWindowNumber));
                                 if (allianceWindowNumber == 1) {
                                     // PluginLog.Information($"drawing alliance ONE, {group} {memberIdx} {name} {user?.DisplayName}");
                                     this.DrawIndicatorAlliance(drawList, allianceWindow1, memberIdx, user);
