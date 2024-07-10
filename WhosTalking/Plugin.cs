@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
@@ -37,7 +39,8 @@ public sealed class Plugin: IDalamudPlugin {
         ICommandManager commandManager,
         IPluginLog pluginLog,
         INotificationManager notificationManager,
-        ITextureProvider textureProvider
+        ITextureProvider textureProvider,
+        IAddonLifecycle addonLifecycle
     ) {
         this.PluginInterface = pluginInterface;
         this.GameGui = gameGui;
@@ -48,6 +51,7 @@ public sealed class Plugin: IDalamudPlugin {
         this.PluginLog = pluginLog;
         this.NotificationManager = notificationManager;
         this.TextureProvider = textureProvider;
+        this.AddonLifecycle = addonLifecycle;
 
         this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.Configuration.Initialize(this.PluginInterface);
@@ -75,6 +79,9 @@ public sealed class Plugin: IDalamudPlugin {
         this.CommandManager.AddHandler("/whostalking", new CommandInfo(this.OnCommand));
         this.disposeActions.Push(() => this.CommandManager.RemoveHandler("/whostalking"));
 
+        this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, "_PartyList", this.AtkDrawPartyList);
+        this.disposeActions.Push(() => this.AddonLifecycle.UnregisterListener(this.AtkDrawPartyList));
+
 #if DEBUG
         if (pluginInterface.Reason == PluginLoadReason.Reload) {
             this.MainWindow.IsOpen = true;
@@ -100,6 +107,7 @@ public sealed class Plugin: IDalamudPlugin {
     internal IPluginLog PluginLog { get; init; }
     internal INotificationManager NotificationManager { get; init; }
     internal ITextureProvider TextureProvider { get; init; }
+    internal IAddonLifecycle AddonLifecycle { get; init; }
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
@@ -147,6 +155,27 @@ public sealed class Plugin: IDalamudPlugin {
         return pos;
     }
 
+    private unsafe void AtkDrawPartyList(AddonEvent evt, AddonArgs args) {
+        if (this.Configuration.IndicatorStyle != IndicatorStyle.Atk) {
+            return;
+        }
+
+        var partyList = (AddonPartyList*)args.Addon;
+        if (partyList == null) {
+            return;
+        }
+
+        for (var i = 0; i < 8; i++) {
+            var partyMemberComponent = partyList->PartyMembers[i].PartyMemberComponent;
+            if (partyMemberComponent == null) continue;
+            if (partyMemberComponent->OwnerNode == null) continue;
+            if (!partyMemberComponent->OwnerNode->IsVisible()) continue;
+            var jobIconGlow = partyMemberComponent->GetImageNodeById(19);
+            if (jobIconGlow == null) continue;
+            jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
+        }
+    }
+
     private void Draw() {
         this.WindowSystem.Draw();
         if (this.Connection?.Self != null || this.ConfigWindow.IsOpen) {
@@ -159,24 +188,32 @@ public sealed class Plugin: IDalamudPlugin {
             return;
         }
 
-        var colNode = &partyAddon->PartyMembers[idx].ClassJobIcon->AtkResNode;
-        if ((nint)colNode == nint.Zero) { // this seems like it's null sometimes? set up cwp via pf, exception on join
+        var classJobIcon = partyAddon->PartyMembers[idx].ClassJobIcon;
+        if (classJobIcon == null) { // this seems like it's null sometimes? set up cwp via pf, exception on join
             return;
         }
+        var colNode = &classJobIcon->AtkResNode;
 
-        var indicatorStart = GetNodePosition(colNode);
-        var scale = partyAddon->AtkUnitBase.Scale;
-        var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
-        var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
-        var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-        drawList.AddRect(
-            indicatorMin,
-            indicatorMax,
-            this.GetColour(user),
-            7 * scale,
-            ImDrawFlags.RoundCornersAll,
-            (3 * scale) - 1
-        );
+        if (this.Configuration.IndicatorStyle == IndicatorStyle.Imgui) {
+            var indicatorStart = GetNodePosition(colNode);
+            var scale = partyAddon->AtkUnitBase.Scale;
+            var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
+            var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
+            var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
+            drawList.AddRect(
+                indicatorMin,
+                indicatorMax,
+                this.GetColour(user),
+                7 * scale,
+                ImDrawFlags.RoundCornersAll,
+                (3 * scale) - 1
+            );
+        } else if (this.Configuration.IndicatorStyle == IndicatorStyle.Atk) {
+            var colour = this.GetColour(user);
+            var jobIconGlowNode = partyAddon->PartyMembers[idx].PartyMemberComponent->GetImageNodeById(19);
+            jobIconGlowNode->Color.RGBA = colour;
+            // visibility will be handled in predraw
+        }
     }
 
     private unsafe void DrawIndicatorAlliance(ImDrawListPtr drawList, AtkUnitBase* allianceAddon, int idx, User? user) {

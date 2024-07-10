@@ -72,6 +72,20 @@ public sealed class ConfigWindow: Window, IDisposable {
             );
         }
 
+        var indicatorStyle = (int)this.plugin.Configuration.IndicatorStyle;
+        var indicatorStyles = Enum.GetValues(typeof(IndicatorStyle))
+            .Cast<IndicatorStyle>()
+            .Select(val => val.ToString())
+            .ToArray();
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text("Indicator style:");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.Combo("###indicatorStyle", ref indicatorStyle, indicatorStyles, indicatorStyles.Length)) {
+            this.plugin.Configuration.IndicatorStyle = (IndicatorStyle)indicatorStyle;
+            this.plugin.Configuration.Save();
+        }
+
         var nonXivUsersDisplayMode = (int)this.plugin.Configuration.NonXivUsersDisplayMode;
         var nonXivUsersDisplayModes = Enum.GetValues(typeof(NonXivUsersDisplayMode))
             .Cast<NonXivUsersDisplayMode>()

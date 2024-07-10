@@ -11,6 +11,11 @@ public enum NonXivUsersDisplayMode {
     ManuallyPositioned = 2,
 }
 
+public enum IndicatorStyle {
+    Imgui = 0,
+    Atk = 1,
+}
+
 [Serializable]
 public sealed class Configuration: IPluginConfiguration {
     // the below exist just to make saving less cumbersome
@@ -24,6 +29,7 @@ public sealed class Configuration: IPluginConfiguration {
     public int NonXivUsersY { get; set; } = 10;
     public bool ShowIndicators { get; set; } = true;
     public bool ShowUnmatchedUsers { get; set; } = true;
+    public IndicatorStyle IndicatorStyle { get; set; } = IndicatorStyle.Atk;
 
     // colours are ABGR
     public uint ColourUnmatched { get; set; } = 0xFF00FFFF; // yellow
