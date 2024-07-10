@@ -172,7 +172,9 @@ public sealed class Plugin: IDalamudPlugin {
             if (!partyMemberComponent->OwnerNode->IsVisible()) continue;
             var jobIconGlow = partyMemberComponent->GetImageNodeById(19);
             if (jobIconGlow == null) continue;
-            jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
+            if (jobIconGlow->Color.RGBA != 0xffffffff) {
+                jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
+            }
         }
     }
 
