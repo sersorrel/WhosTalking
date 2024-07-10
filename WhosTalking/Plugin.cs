@@ -109,6 +109,8 @@ public sealed class Plugin: IDalamudPlugin {
     internal ITextureProvider TextureProvider { get; init; }
     internal IAddonLifecycle AddonLifecycle { get; init; }
 
+    private int validSlots;
+
     public void Dispose() {
         foreach (var action in this.disposeActions) {
             action.Invoke();
@@ -172,8 +174,10 @@ public sealed class Plugin: IDalamudPlugin {
             if (!partyMemberComponent->OwnerNode->IsVisible()) continue;
             var jobIconGlow = partyMemberComponent->GetImageNodeById(19);
             if (jobIconGlow == null) continue;
-            if (jobIconGlow->Color.RGBA != 0xffffffff) {
+            if ((this.validSlots & (1 << i)) != 0) {
                 jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
+            } else { // reset the colour to normal
+                jobIconGlow->Color.RGBA = 0xffffffff;
             }
         }
     }
@@ -182,6 +186,8 @@ public sealed class Plugin: IDalamudPlugin {
         this.WindowSystem.Draw();
         if (this.Connection?.Self != null || this.ConfigWindow.IsOpen) {
             this.DrawOverlay();
+        } else {
+            this.validSlots = 0;
         }
     }
 
@@ -251,6 +257,7 @@ public sealed class Plugin: IDalamudPlugin {
         ImGuiHelpers.ForceNextWindowMainViewport();
         ImGui.SetNextWindowPos(ImGui.GetMainViewport().Pos);
         ImGui.SetNextWindowSize(ImGui.GetMainViewport().Size);
+        var validSlots = 0;
         if (ImGui.Begin(
                 "##WhosTalkingOverlay",
                 ImGuiWindowFlags.NoDecoration
@@ -294,6 +301,7 @@ public sealed class Plugin: IDalamudPlugin {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
                             var user = this.XivToDiscord(member->NameString);
                             this.DrawIndicator(drawList, partyAddon, i, user);
+                            validSlots |= 1 << i;
                             knownUsers.Add(user!);
                         }
                     } else {
@@ -302,6 +310,7 @@ public sealed class Plugin: IDalamudPlugin {
                             var member = InfoProxyCrossRealm.GetGroupMember((uint)i);
                             var user = this.XivToDiscord(member->NameString);
                             this.DrawIndicator(drawList, partyAddon, i, user);
+                            validSlots |= 1 << i;
                             knownUsers.Add(user!);
                         }
                     }
@@ -318,6 +327,7 @@ public sealed class Plugin: IDalamudPlugin {
                         var node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(10);
                         if (node != null && node->IsVisible()) {
                             this.DrawIndicator(drawList, partyAddon, 0, this.Connection.Self);
+                            validSlots |= 1;
                             knownUsers.Add(this.Connection.Self!);
                         }
                     }
@@ -335,6 +345,7 @@ public sealed class Plugin: IDalamudPlugin {
                             // TODO: look at partyMember.Object (and this.PartyList)
                             var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!);
                             this.DrawIndicator(drawList, partyAddon, i, user);
+                            validSlots |= 1 << i;
                             knownUsers.Add(user!);
                         }
                     }
@@ -512,6 +523,7 @@ public sealed class Plugin: IDalamudPlugin {
                     }
                 }
             } finally {
+                this.validSlots = validSlots;
                 ImGui.PopClipRect();
                 ImGui.End();
             }
