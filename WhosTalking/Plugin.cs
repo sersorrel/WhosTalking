@@ -238,12 +238,15 @@ public sealed class Plugin: IDalamudPlugin {
             var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
             var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
             var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
+            var cornerStyle = (this.Configuration.UseRoundedCorners == true) ?
+                ImDrawFlags.RoundCornersAll :
+                ImDrawFlags.RoundCornersNone;
             drawList.AddRect(
                 indicatorMin,
                 indicatorMax,
                 this.GetColour(user),
                 7 * scale,
-                ImDrawFlags.RoundCornersAll,
+                cornerStyle,
                 (3 * scale) - 1
             );
         } else if (this.Configuration.IndicatorStyle == IndicatorStyle.Atk) {
