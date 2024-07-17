@@ -87,8 +87,11 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         var useRoundedCorners = this.plugin.Configuration.UseRoundedCorners;
-        if (this.plugin.Configuration.IndicatorStyle == IndicatorStyle.Imgui &&
-            ImGui.Checkbox("Use rounded corners for voice activity indicators (Material UI/Frost UI users, disable this!)", ref useRoundedCorners)) {
+        if (this.plugin.Configuration.IndicatorStyle == IndicatorStyle.Imgui
+            && ImGui.Checkbox(
+                "Use rounded corners for voice activity indicators (Material UI/Frost UI users, disable this!)",
+                ref useRoundedCorners
+            )) {
             this.plugin.Configuration.UseRoundedCorners = useRoundedCorners;
             this.plugin.Configuration.Save();
         }

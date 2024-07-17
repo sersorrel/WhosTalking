@@ -28,6 +28,8 @@ public sealed class Plugin: IDalamudPlugin {
     internal DiscordConnection Connection;
     private Stack<Action> disposeActions = new();
     internal IpcSystem IpcSystem;
+
+    private int validSlots;
     public WindowSystem WindowSystem = new("WhosTalking");
 
     public Plugin(
@@ -82,7 +84,11 @@ public sealed class Plugin: IDalamudPlugin {
         this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, "_PartyList", this.AtkDrawPartyList);
         this.disposeActions.Push(() => this.AddonLifecycle.UnregisterListener(this.AtkDrawPartyList));
 
-        this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, ["_AllianceList1", "_AllianceList2"], this.AtkDrawAllianceList);
+        this.AddonLifecycle.RegisterListener(
+            AddonEvent.PreDraw,
+            ["_AllianceList1", "_AllianceList2"],
+            this.AtkDrawAllianceList
+        );
         this.disposeActions.Push(() => this.AddonLifecycle.UnregisterListener(this.AtkDrawAllianceList));
 
 #if DEBUG
@@ -111,8 +117,6 @@ public sealed class Plugin: IDalamudPlugin {
     internal INotificationManager NotificationManager { get; init; }
     internal ITextureProvider TextureProvider { get; init; }
     internal IAddonLifecycle AddonLifecycle { get; init; }
-
-    private int validSlots;
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
@@ -172,11 +176,23 @@ public sealed class Plugin: IDalamudPlugin {
 
         for (var i = 0; i < 8; i++) {
             var partyMemberComponent = partyList->PartyMembers[i].PartyMemberComponent;
-            if (partyMemberComponent == null) continue;
-            if (partyMemberComponent->OwnerNode == null) continue;
-            if (!partyMemberComponent->OwnerNode->IsVisible()) continue;
+            if (partyMemberComponent == null) {
+                continue;
+            }
+
+            if (partyMemberComponent->OwnerNode == null) {
+                continue;
+            }
+
+            if (!partyMemberComponent->OwnerNode->IsVisible()) {
+                continue;
+            }
+
             var jobIconGlow = partyMemberComponent->GetImageNodeById(19);
-            if (jobIconGlow == null) continue;
+            if (jobIconGlow == null) {
+                continue;
+            }
+
             if ((this.validSlots & (1 << i)) != 0) {
                 jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
             } else { // reset the colour to normal
@@ -198,12 +214,24 @@ public sealed class Plugin: IDalamudPlugin {
         var offset = allianceList->NameString.EndsWith('1') ? 8 : 16;
         for (var i = 0; i < 8; i++) {
             var memberNode = allianceList->UldManager.NodeList[9 - i]; // 9 to 2
-            if (memberNode == null) continue;
-            if (!memberNode->IsVisible()) continue;
+            if (memberNode == null) {
+                continue;
+            }
+
+            if (!memberNode->IsVisible()) {
+                continue;
+            }
+
             var componentNode = memberNode->GetComponent();
-            if (componentNode == null) continue;
+            if (componentNode == null) {
+                continue;
+            }
+
             var jobIconGlow = componentNode->GetImageNodeById(9);
-            if (jobIconGlow == null) continue;
+            if (jobIconGlow == null) {
+                continue;
+            }
+
             if ((this.validSlots & (1 << (i + offset))) != 0) {
                 jobIconGlow->ToggleVisibility(jobIconGlow->Color.RGBA != 0);
             } else { // reset the colour to normal
@@ -230,6 +258,7 @@ public sealed class Plugin: IDalamudPlugin {
         if (classJobIcon == null) { // this seems like it's null sometimes? set up cwp via pf, exception on join
             return;
         }
+
         var colNode = &classJobIcon->AtkResNode;
 
         if (this.Configuration.IndicatorStyle == IndicatorStyle.Imgui) {
@@ -238,9 +267,9 @@ public sealed class Plugin: IDalamudPlugin {
             var indicatorSize = new Vector2(colNode->Width, colNode->Height) * scale;
             var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
             var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-            var cornerStyle = (this.Configuration.UseRoundedCorners == true) ?
-                ImDrawFlags.RoundCornersAll :
-                ImDrawFlags.RoundCornersNone;
+            var cornerStyle = this.Configuration.UseRoundedCorners
+                ? ImDrawFlags.RoundCornersAll
+                : ImDrawFlags.RoundCornersNone;
             drawList.AddRect(
                 indicatorMin,
                 indicatorMax,
@@ -277,9 +306,9 @@ public sealed class Plugin: IDalamudPlugin {
             var indicatorSize = new Vector2(gridNode->Width, gridNode->Height) * scale;
             var indicatorMin = indicatorStart + ImGui.GetMainViewport().Pos;
             var indicatorMax = indicatorStart + indicatorSize + ImGui.GetMainViewport().Pos;
-            var cornerStyle = (this.Configuration.UseRoundedCorners == true) ?
-                ImDrawFlags.RoundCornersAll :
-                ImDrawFlags.RoundCornersNone;
+            var cornerStyle = this.Configuration.UseRoundedCorners
+                ? ImDrawFlags.RoundCornersAll
+                : ImDrawFlags.RoundCornersNone;
             drawList.AddRect(
                 indicatorMin,
                 indicatorMax,
