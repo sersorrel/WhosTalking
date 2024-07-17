@@ -444,7 +444,8 @@ public sealed class ConfigWindow: Window, IDisposable {
         // Draws a preview of what the outline will look like
         // Isn't perfect but it's good enough
         ImGui.SameLine();
-        var preview_min = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+        var scroll = new Vector2(ImGui.GetScrollX(), ImGui.GetScrollY());
+        var preview_min = ImGui.GetWindowPos() + ImGui.GetCursorPos() - scroll;
         var preview_max = preview_min + new Vector2(25, 25);
         var img = this.previewImage.GetWrapOrDefault();
         if (img is not null) {
