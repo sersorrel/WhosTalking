@@ -30,6 +30,7 @@ public sealed class Configuration: IPluginConfiguration {
     public bool ShowIndicators { get; set; } = true;
     public bool ShowUnmatchedUsers { get; set; } = true;
     public IndicatorStyle IndicatorStyle { get; set; } = IndicatorStyle.Atk;
+    public bool UseRoundedCorners { get; set; } = true;
 
     // colours are ABGR
     public uint ColourUnmatched { get; set; } = 0xFF00FFFF; // yellow
