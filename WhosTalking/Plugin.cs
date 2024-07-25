@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Command;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
@@ -31,6 +33,9 @@ public sealed class Plugin: IDalamudPlugin {
 
     private int validSlots;
     public WindowSystem WindowSystem = new("WhosTalking");
+
+    private readonly ISharedImmediateTexture muteIcon;
+    private readonly ISharedImmediateTexture deafenIcon;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -90,6 +95,11 @@ public sealed class Plugin: IDalamudPlugin {
             this.AtkDrawAllianceList
         );
         this.disposeActions.Push(() => this.AddonLifecycle.UnregisterListener(this.AtkDrawAllianceList));
+
+        // Voice list activity images
+        var imagesPath = Path.Combine(this.PluginInterface.AssemblyLocation.Directory?.FullName!, "images");
+        this.muteIcon = this.TextureProvider.GetFromFile(Path.Combine(imagesPath, "mute.png"));
+        this.deafenIcon = this.TextureProvider.GetFromFile(Path.Combine(imagesPath, "deafen.png"));
 
 #if DEBUG
         if (pluginInterface.Reason == PluginLoadReason.Reload) {
@@ -543,12 +553,18 @@ public sealed class Plugin: IDalamudPlugin {
                             var position = pos.Value;
                             var leftColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.75f));
                             var rightColor = ImGui.GetColorU32(new Vector4(0, 0, 0, 0));
-                            var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
+                            var textColorSpeaking = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
+                            var textColorPassive = ImGui.GetColorU32(new Vector4(1, 1, 1, 0.5f));
+                            var textColorDeafened = this.Configuration.ColourDeafened;
+                            var textColorMuted = this.Configuration.ColourMuted;
                             var textPadding = new Vector2(8, 2);
+                            var muteIconImg = this.muteIcon.GetWrapOrDefault();
+                            var deafenIconImg = this.deafenIcon.GetWrapOrDefault();
 
                             foreach (var user in this.Connection.AllUsers.Values) {
-                                if (user.Speaking.GetValueOrDefault(false) && !knownUsers.Contains(user)) {
+                                if (!knownUsers.Contains(user) && (user.Speaking.GetValueOrDefault(false) || this.Configuration.ShowNonXivUsersAlways)) {
                                     var size = ImGui.CalcTextSize(user.DisplayName);
+                                    var spaceSize = ImGui.CalcTextSize(" ");
                                     var midPoint = position.WithX(position.X + (170 * partyAddon->AtkUnitBase.Scale));
                                     var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
                                     drawList.AddRectFilled(
@@ -564,7 +580,35 @@ public sealed class Plugin: IDalamudPlugin {
                                         rightColor,
                                         leftColor
                                     );
-                                    drawList.AddText(position + textPadding, textColor, user.DisplayName);
+                                    var textColor = textColorPassive;
+                                    var displayNameStatus = user.DisplayName;
+
+                                    if (user.Deafened.GetValueOrDefault()) {
+                                        displayNameStatus += " DEAFENED";
+                                        textColor = textColorDeafened;
+                                    } else if (user.Muted.GetValueOrDefault()) {
+                                        displayNameStatus += " MUTED";
+                                        textColor = textColorMuted;
+                                    } else if (user.Speaking.GetValueOrDefault(false)) {
+                                        textColor = textColorSpeaking;
+                                    }
+
+                                    // TODO voice icons, these just don't load properly??
+                                    /*if (user.Deafened.GetValueOrDefault() && deafenIconImg is not null) {
+                                        drawList.AddImage(
+                                            deafenIconImg.ImGuiHandle,
+                                            position + textPadding + size,
+                                            position + new Vector2(25, 25)
+                                        );
+                                    } else if (user.Muted.GetValueOrDefault() && muteIconImg is not null) {
+                                        drawList.AddImage(
+                                            muteIconImg.ImGuiHandle,
+                                            position + textPadding + size,
+                                            position + new Vector2(25, 25)
+                                        );
+                                    }*/
+
+                                    drawList.AddText(position + textPadding, textColor, displayNameStatus);
                                     position.Y += size.Y + 5;
                                 }
                             }
@@ -588,7 +632,7 @@ public sealed class Plugin: IDalamudPlugin {
                                         rightColor,
                                         leftColor
                                     );
-                                    drawList.AddText(position + textPadding, textColor, s);
+                                    drawList.AddText(position + textPadding, textColorSpeaking, s);
                                     position.Y += size.Y + 5;
                                 }
                             }
