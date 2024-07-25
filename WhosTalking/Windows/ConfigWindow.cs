@@ -132,6 +132,19 @@ public sealed class ConfigWindow: Window, IDisposable {
             }
         }
 
+        var showNonXivUsersAlways = this.plugin.Configuration.ShowNonXivUsersAlways;
+        if (ImGui.Checkbox("Always show list of Discord users not in your party regardless of voice activity", ref showNonXivUsersAlways)) {
+            this.plugin.Configuration.ShowNonXivUsersAlways = showNonXivUsersAlways;
+            this.plugin.Configuration.Save();
+        }
+
+        if (ImGui.IsItemHovered() && !showIndicators) {
+            ImGui.SetTooltip(
+                "Because “Show voice activity indicators” is disabled,"
+                + "\nthis setting has no effect."
+            );
+        }
+
         var showUnmatchedUsers = this.plugin.Configuration.ShowUnmatchedUsers;
         if (ImGui.Checkbox("Show boxes for unmatched users", ref showUnmatchedUsers)) {
             this.plugin.Configuration.ShowUnmatchedUsers = showUnmatchedUsers;
