@@ -251,14 +251,14 @@ public class DiscordConnection {
                     }
                     case "VOICE_CHANNEL_SELECT": {
                         // the client joins or leaves a voice channel
-                        // join: both guild and channel are set
+                        // join: channel is set, guild is set if in a server else null
                         // leave: channel is null, guild is not present
                         string? guild, channel;
                         if (root.GetProperty("data").TryGetProperty("guild_id", out var guildElement)
                             && root.GetProperty("data").TryGetProperty("channel_id", out var channelElement)
-                            && (guild = guildElement.GetString()) != null
                             && (channel = channelElement.GetString()) != null
                         ) {
+                            guild = guildElement.GetString();
                             this.Channel = new DiscordChannel(guild, channel);
                         } else {
                             this.Channel = null;
