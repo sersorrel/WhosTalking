@@ -31,3 +31,7 @@ See https://discord.com/developers/docs/topics/rpc for details.
 - *If the user is in a voice channel:*
   - We set `Channel`
   - We recreate `AllUsers` based on the data from Discord
+
+## Licensing and Attribution
+
+This plugin contains some icons from [Google Fonts' Material Design icon library](https://fonts.google.com/icons), which are utilized in this project under the Apache 2.0 license.
