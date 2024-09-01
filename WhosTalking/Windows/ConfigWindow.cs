@@ -86,6 +86,13 @@ public sealed class ConfigWindow: Window, IDisposable {
             this.plugin.Configuration.Save();
         }
 
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip(
+                "The \"Atk\" setting (using the game's own UI framework) is experimental!"
+                + "\nPlease report any issues in Discord."
+            );
+        }
+
         var useRoundedCorners = this.plugin.Configuration.UseRoundedCorners;
         if (this.plugin.Configuration.IndicatorStyle == IndicatorStyle.Imgui
             && ImGui.Checkbox(

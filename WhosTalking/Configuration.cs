@@ -30,7 +30,7 @@ public sealed class Configuration: IPluginConfiguration {
     public int NonXivUsersY { get; set; } = 10;
     public bool ShowIndicators { get; set; } = true;
     public bool ShowUnmatchedUsers { get; set; } = true;
-    public IndicatorStyle IndicatorStyle { get; set; } = IndicatorStyle.Atk;
+    public IndicatorStyle IndicatorStyle { get; set; } = IndicatorStyle.Imgui;
     public bool UseRoundedCorners { get; set; } = true;
 
     // colours are ABGR
