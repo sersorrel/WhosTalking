@@ -585,13 +585,10 @@ public sealed class Plugin: IDalamudPlugin {
                                         leftColor
                                     );
                                     var textColor = textColorPassive;
-                                    var displayNameStatus = user.DisplayName;
 
                                     if (user.Deafened.GetValueOrDefault()) {
-                                        displayNameStatus += " DEAFENED";
                                         textColor = textColorDeafened;
                                     } else if (user.Muted.GetValueOrDefault()) {
-                                        displayNameStatus += " MUTED";
                                         textColor = textColorMuted;
                                     } else if (user.Speaking.GetValueOrDefault(false)) {
                                         textColor = textColorSpeaking;
@@ -613,7 +610,7 @@ public sealed class Plugin: IDalamudPlugin {
                                         );
                                     }
 
-                                    drawList.AddText(position + textPadding, textColor, displayNameStatus);
+                                    drawList.AddText(position + textPadding, textColor, user.DisplayName);
                                     position.Y += size.Y + 5;
                                 }
                             }
