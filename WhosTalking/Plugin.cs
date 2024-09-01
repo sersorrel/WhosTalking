@@ -27,15 +27,15 @@ namespace WhosTalking;
 
 [PublicAPI]
 public sealed class Plugin: IDalamudPlugin {
+    private readonly ISharedImmediateTexture deafenIcon;
+    private readonly ISharedImmediateTexture muteIcon;
+
     internal DiscordConnection Connection;
     private Stack<Action> disposeActions = new();
     internal IpcSystem IpcSystem;
 
     private int validSlots;
     public WindowSystem WindowSystem = new("WhosTalking");
-
-    private readonly ISharedImmediateTexture muteIcon;
-    private readonly ISharedImmediateTexture deafenIcon;
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -562,8 +562,12 @@ public sealed class Plugin: IDalamudPlugin {
                             var deafenIconImg = this.deafenIcon.GetWrapOrDefault();
 
                             foreach (var user in this.Connection.AllUsers.Values) {
-                                if (!knownUsers.Contains(user) && (user.Speaking.GetValueOrDefault(false) || this.Configuration.ShowNonXivUsersAlways)) {
+                                if (!knownUsers.Contains(user)
+                                    && (user.Speaking.GetValueOrDefault(false)
+                                        || this.Configuration.ShowNonXivUsersAlways)) {
                                     var size = ImGui.CalcTextSize(user.DisplayName);
+                                    var width = size.WithY(0);
+                                    var imgSize = size.WithX(size.Y);
                                     var spaceSize = ImGui.CalcTextSize(" ");
                                     var midPoint = position.WithX(position.X + (170 * partyAddon->AtkUnitBase.Scale));
                                     var rightEdge = midPoint.WithX(midPoint.X + (80 * partyAddon->AtkUnitBase.Scale));
@@ -593,20 +597,21 @@ public sealed class Plugin: IDalamudPlugin {
                                         textColor = textColorSpeaking;
                                     }
 
-                                    // TODO voice icons, these just don't load properly??
-                                    /*if (user.Deafened.GetValueOrDefault() && deafenIconImg is not null) {
+                                    if (user.Deafened.GetValueOrDefault() && deafenIconImg is not null) {
+                                        var start = position + textPadding + width + new Vector2(3, 0);
                                         drawList.AddImage(
                                             deafenIconImg.ImGuiHandle,
-                                            position + textPadding + size,
-                                            position + new Vector2(25, 25)
+                                            start,
+                                            start + imgSize
                                         );
                                     } else if (user.Muted.GetValueOrDefault() && muteIconImg is not null) {
+                                        var start = position + textPadding + width + new Vector2(3, 0);
                                         drawList.AddImage(
                                             muteIconImg.ImGuiHandle,
-                                            position + textPadding + size,
-                                            position + new Vector2(25, 25)
+                                            start,
+                                            start + imgSize
                                         );
-                                    }*/
+                                    }
 
                                     drawList.AddText(position + textPadding, textColor, displayNameStatus);
                                     position.Y += size.Y + 5;

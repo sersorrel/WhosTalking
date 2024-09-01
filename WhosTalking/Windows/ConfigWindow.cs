@@ -133,7 +133,10 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         var showNonXivUsersAlways = this.plugin.Configuration.ShowNonXivUsersAlways;
-        if (ImGui.Checkbox("Always show list of Discord users not in your party regardless of voice activity", ref showNonXivUsersAlways)) {
+        if (ImGui.Checkbox(
+                "Always show all Discord users not in your party, regardless of voice activity",
+                ref showNonXivUsersAlways
+            )) {
             this.plugin.Configuration.ShowNonXivUsersAlways = showNonXivUsersAlways;
             this.plugin.Configuration.Save();
         }
