@@ -198,7 +198,7 @@ public sealed class Plugin: IDalamudPlugin {
                 continue;
             }
 
-            var jobIconGlow = partyMemberComponent->GetImageNodeById(19);
+            var jobIconGlow = partyMemberComponent->GetImageNodeById(20);
             if (jobIconGlow == null) {
                 continue;
             }
@@ -290,7 +290,7 @@ public sealed class Plugin: IDalamudPlugin {
             );
         } else if (this.Configuration.IndicatorStyle == IndicatorStyle.Atk) {
             var colour = this.GetColour(user);
-            var jobIconGlowNode = partyAddon->PartyMembers[idx].PartyMemberComponent->GetImageNodeById(19);
+            var jobIconGlowNode = partyAddon->PartyMembers[idx].PartyMemberComponent->GetImageNodeById(20);
             jobIconGlowNode->Color.RGBA = colour;
             // visibility will be handled in predraw
         }
