@@ -1,0 +1,14 @@
+name: Who's Talking
+author: ash
+tags: [UI]
+punchline: See Discord voice activity indicators directly on your party list.
+description: >-
+    Once installed, join a Discord voice channel and an XIV party, and have people put their character names in their
+    Discord nicknames (or configure things manually in the plugin settings). You should get colourful outlines around
+    the job icons on the party list: green for talking, blue for muted, red for deafened, and yellow for unknown name.
+
+
+    Note that you'll get a permission prompt mentioning "StreamKit Overlay" – this is expected.
+
+
+    Some icons by Google, Apache 2.0.
