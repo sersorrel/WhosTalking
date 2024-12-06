@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
@@ -14,11 +15,13 @@ namespace WhosTalking.Windows;
 public sealed class MainWindow: Window, IDisposable {
     private readonly Plugin plugin;
 
-    public MainWindow(Plugin plugin): base(
-        "Who's Talking debug",
-        ImGuiWindowFlags.AlwaysAutoResize
-    ) {
+    public MainWindow(Plugin plugin): base("Who's Talking debug") {
         this.plugin = plugin;
+
+        this.SizeConstraints = new WindowSizeConstraints {
+            MinimumSize = new Vector2(300, 600),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
+        };
     }
 
     public void Dispose() {}
