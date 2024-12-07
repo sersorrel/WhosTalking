@@ -174,6 +174,18 @@ public sealed class Plugin: IDalamudPlugin {
         return pos;
     }
 
+    private static unsafe Vector2 GetNodePosition(AtkComponentNode* node) {
+        var pos = new Vector2(node->X, node->Y);
+        var par = node->ParentNode;
+        while (par != null) {
+            pos *= new Vector2(par->ScaleX, par->ScaleY);
+            pos += new Vector2(par->X, par->Y);
+            par = par->ParentNode;
+        }
+
+        return pos;
+    }
+
     private unsafe void AtkDrawPartyList(AddonEvent evt, AddonArgs args) {
         if (this.Configuration.IndicatorStyle != IndicatorStyle.Atk) {
             return;
@@ -697,25 +709,12 @@ public sealed class Plugin: IDalamudPlugin {
                 return null;
             case NonXivUsersDisplayMode.BelowPartyList: {
                 Vector2? pos = null;
-                var node = (AtkResNode*)null; // lol lmao
-                var lastGoodNode = (AtkResNode*)null;
+                var lastGoodNode = (AtkComponentNode*)null;
 
-                for (uint id = 10; id <= 19; id++) {
-                    node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
-                    if (node == null || !node->IsVisible()) {
-                        continue;
-                    }
+                AddonPartyList.PartyListMemberStruct[] members = [..partyAddon->PartyMembers, ..partyAddon->TrustMembers, partyAddon->Chocobo, partyAddon->Pet];
 
-                    lastGoodNode = node;
-                    var nodePos = GetNodePosition(node);
-                    if (pos == null || nodePos.Y > pos.Value.Y) {
-                        pos = nodePos;
-                    }
-                }
-
-                // chocobo (etc?)
-                for (uint id = 180001; id <= 180007; id++) {
-                    node = partyAddon->AtkUnitBase.UldManager.SearchNodeById(id);
+                foreach (var member in members) {
+                    var node = member.PartyMemberComponent->OwnerNode;
                     if (node == null || !node->IsVisible()) {
                         continue;
                     }
