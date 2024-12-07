@@ -168,15 +168,24 @@ public sealed class MainWindow: Window, IDisposable {
         }
 
         ImGui.InputText("command", ref this.rawCommand, 100);
-        ImGui.InputTextMultiline("##payload", ref this.rawPayload, 1000, new Vector2(ImGui.GetWindowWidth() - ImGui.GetStyle().ScrollbarSize - 20, 400));
+        ImGui.InputTextMultiline(
+            "##payload",
+            ref this.rawPayload,
+            1000,
+            new Vector2(ImGui.GetWindowWidth() - ImGui.GetStyle().ScrollbarSize - 20, 400)
+        );
 
         if (ImGui.Button("send raw command")) {
             this.plugin.PluginLog.Debug($"sending command {this.rawCommand} with payload {this.rawPayload}");
-            this.plugin.Connection.Send(JsonSerializer.Serialize(new {
-                cmd = this.rawCommand,
-                args = JsonSerializer.Deserialize<object>(this.rawPayload),
-                nonce = Guid.NewGuid().ToString(),
-            }));
+            this.plugin.Connection.Send(
+                JsonSerializer.Serialize(
+                    new {
+                        cmd = this.rawCommand,
+                        args = JsonSerializer.Deserialize<object>(this.rawPayload),
+                        nonce = Guid.NewGuid().ToString(),
+                    }
+                )
+            );
         }
 
         ImGui.Separator();

@@ -711,7 +711,8 @@ public sealed class Plugin: IDalamudPlugin {
                 Vector2? pos = null;
                 var lastGoodNode = (AtkComponentNode*)null;
 
-                AddonPartyList.PartyListMemberStruct[] members = [..partyAddon->PartyMembers, ..partyAddon->TrustMembers, partyAddon->Chocobo, partyAddon->Pet];
+                AddonPartyList.PartyListMemberStruct[] members =
+                    [..partyAddon->PartyMembers, ..partyAddon->TrustMembers, partyAddon->Chocobo, partyAddon->Pet];
 
                 foreach (var member in members) {
                     var node = member.PartyMemberComponent->OwnerNode;

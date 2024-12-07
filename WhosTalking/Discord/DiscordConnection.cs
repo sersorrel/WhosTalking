@@ -54,10 +54,6 @@ public class DiscordConnection {
         }
     }
 
-    public void Send(string msg) {
-        this.webSocket.Send(msg);
-    }
-
     internal DiscordChannel? Channel {
         get => this.currentChannel;
         set {
@@ -98,6 +94,10 @@ public class DiscordConnection {
             this.plugin.Configuration.AccessToken = value;
             this.plugin.Configuration.Save();
         }
+    }
+
+    public void Send(string msg) {
+        this.webSocket.Send(msg);
     }
 
     public void Dispose() {
