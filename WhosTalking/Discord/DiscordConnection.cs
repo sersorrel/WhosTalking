@@ -54,6 +54,10 @@ public class DiscordConnection {
         }
     }
 
+    public void Send(string msg) {
+        this.webSocket.Send(msg);
+    }
+
     internal DiscordChannel? Channel {
         get => this.currentChannel;
         set {

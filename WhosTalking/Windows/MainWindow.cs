@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Windowing;
@@ -14,6 +15,8 @@ namespace WhosTalking.Windows;
 
 public sealed class MainWindow: Window, IDisposable {
     private readonly Plugin plugin;
+    private string rawCommand = "";
+    private string rawPayload = "";
 
     public MainWindow(Plugin plugin): base("Who's Talking debug") {
         this.plugin = plugin;
@@ -162,6 +165,18 @@ public sealed class MainWindow: Window, IDisposable {
                     }
                 }
             }
+        }
+
+        ImGui.InputText("command", ref this.rawCommand, 100);
+        ImGui.InputTextMultiline("##payload", ref this.rawPayload, 1000, new Vector2(ImGui.GetWindowWidth() - ImGui.GetStyle().ScrollbarSize - 20, 400));
+
+        if (ImGui.Button("send raw command")) {
+            this.plugin.PluginLog.Debug($"sending command {this.rawCommand} with payload {this.rawPayload}");
+            this.plugin.Connection.Send(JsonSerializer.Serialize(new {
+                cmd = this.rawCommand,
+                args = JsonSerializer.Deserialize<object>(this.rawPayload),
+                nonce = Guid.NewGuid().ToString(),
+            }));
         }
 
         ImGui.Separator();
