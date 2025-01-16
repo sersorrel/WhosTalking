@@ -15,7 +15,7 @@ public class DiscordConnection {
     internal readonly Dictionary<string, User> AllUsers;
     private readonly Stack<Action> disposeActions = new();
     private readonly Plugin plugin;
-    public readonly WebsocketClient webSocket;
+    private readonly WebsocketClient webSocket;
     private DiscordChannel? currentChannel;
     private bool isArRpc;
     private string? userId;
