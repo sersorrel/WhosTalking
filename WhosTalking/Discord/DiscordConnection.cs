@@ -15,7 +15,7 @@ public class DiscordConnection {
     internal readonly Dictionary<string, User> AllUsers;
     private readonly Stack<Action> disposeActions = new();
     private readonly Plugin plugin;
-    private readonly WebsocketClient webSocket;
+    public readonly WebsocketClient webSocket;
     private DiscordChannel? currentChannel;
     private bool isArRpc;
     private string? userId;
@@ -23,8 +23,10 @@ public class DiscordConnection {
     public DiscordConnection(Plugin plugin) {
         this.plugin = plugin;
         this.AllUsers = new Dictionary<string, User>();
+        
+        var discordPort = this.plugin.Configuration.Port;
         this.webSocket = new WebsocketClient(
-            new Uri($"ws://127.0.0.1:6463/?v=1&client_id={ClientId}"),
+            new Uri($"ws://127.0.0.1:{discordPort}/?v=1&client_id={ClientId}"),
             () => {
                 var client = new ClientWebSocket();
                 client.Options.SetRequestHeader("Origin", "https://streamkit.discord.com");
@@ -95,6 +97,8 @@ public class DiscordConnection {
             this.plugin.Configuration.Save();
         }
     }
+    
+    private int? Port => this.plugin.Configuration.Port;
 
     public void Send(string msg) {
         this.webSocket.Send(msg);

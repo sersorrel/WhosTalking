@@ -142,6 +142,12 @@ public sealed class Plugin: IDalamudPlugin {
         this.ConfigWindow.IsOpen = true;
     }
 
+    public void ReconnectDiscord() {
+        this.Connection.Dispose();
+        this.Connection = new DiscordConnection(this);
+        this.disposeActions.Push(() => this.Connection.Dispose());
+    }
+
     private uint GetColour(User? user) {
         if (user == null) {
             return this.Configuration.ShowUnmatchedUsers ? this.Configuration.ColourUnmatched : 0;
