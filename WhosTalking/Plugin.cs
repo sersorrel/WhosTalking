@@ -83,7 +83,11 @@ public sealed class Plugin: IDalamudPlugin {
         this.IpcSystem = new IpcSystem(this, pluginInterface);
         this.disposeActions.Push(() => this.IpcSystem.Dispose());
 
-        this.CommandManager.AddHandler("/whostalking", new CommandInfo(this.OnCommand));
+        this.CommandManager.AddHandler("/whostalking", new CommandInfo(this.OnCommand)
+        {
+            HelpMessage = "Toggle Settings\n" + "/whostalking port <number> --> Set the port used",
+        });
+        
         this.disposeActions.Push(() => this.CommandManager.RemoveHandler("/whostalking"));
 
         this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, "_PartyList", this.AtkDrawPartyList);
@@ -135,7 +139,21 @@ public sealed class Plugin: IDalamudPlugin {
     }
 
     private void OnCommand(string command, string args) {
-        this.ConfigWindow.IsOpen = !this.ConfigWindow.IsOpen;
+        if (args.Length != 0) {
+            var arguments = args.Split(" ");
+            if (arguments[0].ToLower().Equals("port") && arguments.Length > 1) {
+                if (int.TryParse(arguments[1], out var port)) {
+                    Configuration.Port = port;
+                    Configuration.Save();
+                    this.PluginLog.Information($"Port set to {port}. Reconnecting...");
+                    this.ReconnectDiscord();
+                } else {
+                    this.PluginLog.Error("Port is not a valid number.");
+                }
+            }
+        } else {
+            this.ConfigWindow.IsOpen = !this.ConfigWindow.IsOpen;
+        }
     }
 
     public void OpenConfigUi() {
