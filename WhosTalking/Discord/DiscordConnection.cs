@@ -139,25 +139,29 @@ public class DiscordConnection {
     }
 
     private async void Authorize2(string authCode) {
-        this.plugin.PluginLog.Information("authorize, stage 2");
-        using var client = new HttpClient();
-        var response = await client.PostAsync(
-            new Uri("https://streamkit.discord.com/overlay/token"),
-            new StringContent(
-                JsonSerializer.Serialize(
-                    new {
-                        code = authCode,
-                    }
-                ),
-                Encoding.UTF8,
-                new MediaTypeHeaderValue("application/json")
-            )
-        );
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var root = document.RootElement;
-        root.TryGetProperty("access_token", out var accessToken);
-        this.AccessToken = accessToken.GetString();
-        this.Authenticate();
+        try {
+            this.plugin.PluginLog.Information("authorize, stage 2");
+            using var client = new HttpClient();
+            var response = await client.PostAsync(
+                new Uri("https://streamkit.discord.com/overlay/token"),
+                new StringContent(
+                    JsonSerializer.Serialize(
+                        new {
+                            code = authCode,
+                        }
+                    ),
+                    Encoding.UTF8,
+                    new MediaTypeHeaderValue("application/json")
+                )
+            );
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var root = document.RootElement;
+            root.TryGetProperty("access_token", out var accessToken);
+            this.AccessToken = accessToken.GetString();
+            this.Authenticate();
+        } catch (Exception e) when (e is HttpRequestException or JsonException) {
+            this.plugin.PluginLog.Error(e, "discord machine broke (in Authorize2)");
+        }
     }
 
     public void ShowArRpcWarning() {
