@@ -161,6 +161,9 @@ public class DiscordConnection {
             this.Authenticate();
         } catch (Exception e) when (e is HttpRequestException or JsonException) {
             this.plugin.PluginLog.Error(e, "discord machine broke (in Authorize2)");
+        } catch (Exception e) {
+            // since we're async void (oops), exceptions will bubble up into the event loop and crash the game
+            this.plugin.PluginLog.Error(e, "who's talking machine broke (in Authorize2)");
         }
     }
 
