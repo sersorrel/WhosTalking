@@ -24,7 +24,7 @@ public class DiscordConnection {
         this.plugin = plugin;
         this.AllUsers = new Dictionary<string, User>();
         this.webSocket = new WebsocketClient(
-            new Uri($"ws://127.0.0.1:6463/?v=1&client_id={ClientId}"),
+            new Uri($"ws://127.0.0.1:{this.Port}/?v=1&client_id={ClientId}"),
             () => {
                 var client = new ClientWebSocket();
                 client.Options.SetRequestHeader("Origin", "https://streamkit.discord.com");
@@ -95,6 +95,8 @@ public class DiscordConnection {
             this.plugin.Configuration.Save();
         }
     }
+    
+    private int Port => this.plugin.Configuration.Port;
 
     public void Send(string msg) {
         this.webSocket.Send(msg);
