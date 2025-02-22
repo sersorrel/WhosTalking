@@ -41,6 +41,7 @@ public class DiscordConnection {
     }
 
     public bool IsConnected => this.webSocket.IsRunning;
+    public string? ApiEndpoint { get; private set; }
 
     public User? Self {
         get {
@@ -253,6 +254,19 @@ public class DiscordConnection {
                         } catch (Exception e) {
                             this.plugin.PluginLog.Information(e, "arRPC check failed, ignoring");
                             this.isArRpc = false;
+                        }
+
+                        try {
+                            var config = data.GetProperty("config");
+                            var apiEndpoint = config.GetProperty("api_endpoint").GetString();
+                            if (apiEndpoint != null) {
+                                apiEndpoint = apiEndpoint.TrimStart('/');
+                                apiEndpoint = apiEndpoint.Split('/')[0];
+                            }
+                            this.ApiEndpoint = apiEndpoint;
+                        } catch (Exception e) {
+                            this.plugin.PluginLog.Info(e, "API endpoint check failed, ignoring");
+                            this.ApiEndpoint = null;
                         }
 
                         if (this.isArRpc) {

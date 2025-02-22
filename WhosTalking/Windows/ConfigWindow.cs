@@ -183,7 +183,7 @@ public sealed class ConfigWindow: Window, IDisposable {
         }
 
         ImGui.SameLine();
-        ImGui.TextUnformatted(this.plugin.Connection.IsConnected ? "Connected" : "Failed to connect");
+        ImGui.TextUnformatted(this.plugin.Connection.IsConnected ? $"Connected via {this.plugin.Connection.ApiEndpoint ?? "unknown endpoint"}" : "Failed to connect");
 
 
         if (ImGui.IsItemHovered() && !showIndicators) {
