@@ -47,7 +47,8 @@ public sealed class Plugin: IDalamudPlugin {
         IPluginLog pluginLog,
         INotificationManager notificationManager,
         ITextureProvider textureProvider,
-        IAddonLifecycle addonLifecycle
+        IAddonLifecycle addonLifecycle,
+        IChatGui chatGui
     ) {
         this.PluginInterface = pluginInterface;
         this.GameGui = gameGui;
@@ -59,6 +60,7 @@ public sealed class Plugin: IDalamudPlugin {
         this.NotificationManager = notificationManager;
         this.TextureProvider = textureProvider;
         this.AddonLifecycle = addonLifecycle;
+        this.ChatGui = chatGui;
 
         this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.Configuration.Initialize(this.PluginInterface);
@@ -131,6 +133,7 @@ public sealed class Plugin: IDalamudPlugin {
     internal INotificationManager NotificationManager { get; init; }
     internal ITextureProvider TextureProvider { get; init; }
     internal IAddonLifecycle AddonLifecycle { get; init; }
+    internal IChatGui ChatGui { get; init; }
 
     public void Dispose() {
         foreach (var action in this.disposeActions) {
@@ -141,15 +144,21 @@ public sealed class Plugin: IDalamudPlugin {
     private void OnCommand(string command, string args) {
         if (args.Length != 0) {
             var arguments = args.Split(" ");
-            if (arguments[0].ToLower().Equals("port") && arguments.Length > 1) {
-                if (int.TryParse(arguments[1], out var port)) {
-                    Configuration.Port = port;
-                    Configuration.Save();
-                    this.PluginLog.Information($"Port set to {port}. Reconnecting...");
-                    this.ReconnectDiscord();
+            if (arguments[0].ToLower().Equals("port")) {
+                if (arguments.Length > 1) {
+                    if (int.TryParse(arguments[1], out var port)) {
+                        this.Configuration.Port = port;
+                        this.Configuration.Save();
+                        this.ChatGui.Print($"Port set to {port}. Reconnecting...", "Who's Talking");
+                        this.ReconnectDiscord();
+                    } else {
+                        this.ChatGui.PrintError("Port is not a valid number.", "Who's Talking");
+                    }
                 } else {
-                    this.PluginLog.Error("Port is not a valid number.");
+                    this.ChatGui.PrintError("Usage: /whostalking port <number>", "Who's Talking");
                 }
+            } else {
+                this.ChatGui.PrintError("Available commands:\n- /whostalking\n- /whostalking port <number>", "Who's Talking");
             }
         } else {
             this.ConfigWindow.IsOpen = !this.ConfigWindow.IsOpen;
