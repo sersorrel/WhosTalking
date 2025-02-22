@@ -163,7 +163,6 @@ public sealed class Plugin: IDalamudPlugin {
     public void ReconnectDiscord() {
         this.Connection.Dispose();
         this.Connection = new DiscordConnection(this);
-        this.disposeActions.Push(() => this.Connection.Dispose());
     }
 
     private uint GetColour(User? user) {
