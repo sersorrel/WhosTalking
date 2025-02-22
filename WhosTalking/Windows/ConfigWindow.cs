@@ -167,6 +167,7 @@ public sealed class ConfigWindow: Window, IDisposable {
             this.plugin.Configuration.Port = discordPort;
             this.plugin.Configuration.Save();
         }
+
         if (ImGui.IsItemHovered()) {
             ImGui.SetTooltip(
                 "Useful when running multiple clients or other software blocking the default port.\n"
@@ -175,15 +176,21 @@ public sealed class ConfigWindow: Window, IDisposable {
                 + "If in doubt, use the default value 6463."
             );
         }
+
         if (ImGui.Button("Reconnect")) {
             this.plugin.ReconnectDiscord();
         }
+
         if (ImGui.IsItemHovered()) {
             ImGui.SetTooltip("Try to connect to the set port.");
         }
 
         ImGui.SameLine();
-        ImGui.TextUnformatted(this.plugin.Connection.IsConnected ? $"Connected via {this.plugin.Connection.ApiEndpoint ?? "unknown endpoint"}" : "Failed to connect");
+        ImGui.TextUnformatted(
+            this.plugin.Connection.IsConnected
+                ? $"Connected via {this.plugin.Connection.ApiEndpoint ?? "unknown endpoint"}"
+                : "Failed to connect"
+        );
 
 
         if (ImGui.IsItemHovered() && !showIndicators) {

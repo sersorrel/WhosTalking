@@ -96,7 +96,7 @@ public class DiscordConnection {
             this.plugin.Configuration.Save();
         }
     }
-    
+
     private int Port => this.plugin.Configuration.Port;
 
     public void Send(string msg) {
@@ -263,6 +263,7 @@ public class DiscordConnection {
                                 apiEndpoint = apiEndpoint.TrimStart('/');
                                 apiEndpoint = apiEndpoint.Split('/')[0];
                             }
+
                             this.ApiEndpoint = apiEndpoint;
                         } catch (Exception e) {
                             this.plugin.PluginLog.Info(e, "API endpoint check failed, ignoring");

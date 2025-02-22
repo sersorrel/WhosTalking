@@ -85,11 +85,13 @@ public sealed class Plugin: IDalamudPlugin {
         this.IpcSystem = new IpcSystem(this, pluginInterface);
         this.disposeActions.Push(() => this.IpcSystem.Dispose());
 
-        this.CommandManager.AddHandler("/whostalking", new CommandInfo(this.OnCommand)
-        {
-            HelpMessage = "Toggle Settings\n" + "/whostalking port <number> --> Set the port used",
-        });
-        
+        this.CommandManager.AddHandler(
+            "/whostalking",
+            new CommandInfo(this.OnCommand) {
+                HelpMessage = "Toggle Settings\n" + "/whostalking port <number> --> Set the port used",
+            }
+        );
+
         this.disposeActions.Push(() => this.CommandManager.RemoveHandler("/whostalking"));
 
         this.AddonLifecycle.RegisterListener(AddonEvent.PreDraw, "_PartyList", this.AtkDrawPartyList);
@@ -158,7 +160,10 @@ public sealed class Plugin: IDalamudPlugin {
                     this.ChatGui.PrintError("Usage: /whostalking port <number>", "Who's Talking");
                 }
             } else {
-                this.ChatGui.PrintError("Available commands:\n- /whostalking\n- /whostalking port <number>", "Who's Talking");
+                this.ChatGui.PrintError(
+                    "Available commands:\n- /whostalking\n- /whostalking port <number>",
+                    "Who's Talking"
+                );
             }
         } else {
             this.ConfigWindow.IsOpen = !this.ConfigWindow.IsOpen;
