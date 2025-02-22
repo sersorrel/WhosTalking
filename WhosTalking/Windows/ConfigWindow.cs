@@ -161,6 +161,28 @@ public sealed class ConfigWindow: Window, IDisposable {
             this.plugin.Configuration.Save();
         }
 
+        var discordPort = this.plugin.Configuration.Port;
+        if (ImGui.InputInt("Discord port", ref discordPort)) {
+            this.plugin.Configuration.Port = discordPort;
+            this.plugin.Configuration.Save();
+        }
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("Is your Discord running on a different port? Default: 6463.\n"
+                + "Useful when running multiple clients or other software blocking the default port.\n"
+                + "If a port is already in use increment the port by one and try again.\n"
+                + "If in doubt, leave it/set to default 6463!");
+        }
+        if (ImGui.Button("Reconnect")) {
+            this.plugin.ReconnectDiscord();
+        }
+        if (ImGui.IsItemHovered()) {
+            ImGui.SetTooltip("Try to connect to the set port.");
+        }
+        
+        ImGui.SameLine();
+        ImGui.TextUnformatted(this.plugin.Connection.IsConnected ? "Connected!" : "Failed to connect!");
+
+
         if (ImGui.IsItemHovered() && !showIndicators) {
             ImGui.SetTooltip(
                 "Because “Show voice activity indicators” is disabled,"
