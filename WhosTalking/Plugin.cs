@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.Command;
@@ -474,7 +473,7 @@ public sealed class Plugin: IDalamudPlugin {
                         for (var i = 0; i < partyMemberCount; i++) {
                             var partyMember = partyMemberList[i];
                             // TODO: look at partyMember.Object (and this.PartyList)
-                            var user = this.XivToDiscord(Marshal.PtrToStringUTF8((nint)partyMember.Name)!);
+                            var user = this.XivToDiscord(partyMember.Name.ToString());
                             this.DrawIndicator(drawList, partyAddon, i, user);
                             validSlots |= 1 << i;
                             knownUsers.Add(user!);

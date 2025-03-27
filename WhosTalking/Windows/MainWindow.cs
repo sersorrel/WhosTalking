@@ -58,7 +58,7 @@ public sealed class MainWindow: Window, IDisposable {
                     continue;
                 }
 
-                var name = partyMember->Name != null ? partyMember->NameString : "(null)";
+                var name = !partyMember->Name.IsEmpty ? partyMember->NameString : "(null)";
                 ImGui.TextUnformatted($"[{group}][{idx}] = {name}");
             }
         }
@@ -97,7 +97,7 @@ public sealed class MainWindow: Window, IDisposable {
         var partyMemberList = agentHud->PartyMembers;
         for (var i = 0; i < partyMemberCount; i++) {
             var partyMember = partyMemberList[i];
-            var name = partyMember.Name != null ? PtrToString(partyMember.Name, 20) : "(null)";
+            var name = partyMember.Name.HasValue ? partyMember.Name.ToString() : "(null)";
             ImGui.TextUnformatted($"    [{i}] = {name}{(partyMember.Object == null ? " (BattleChara is null)" : "")}");
         }
 
@@ -109,7 +109,7 @@ public sealed class MainWindow: Window, IDisposable {
             ImGui.TextUnformatted($"cwMemberCount = {cwMemberCount}");
             for (uint i = 0; i < cwMemberCount; i++) {
                 var member = InfoProxyCrossRealm.GetGroupMember(i);
-                var name = member->Name != null ? member->NameString : "(null)";
+                var name = !member->Name.IsEmpty ? member->NameString : "(null)";
                 var idx = member->MemberIndex;
                 var groupIdx = member->GroupIndex;
                 ImGui.TextUnformatted(
@@ -131,7 +131,7 @@ public sealed class MainWindow: Window, IDisposable {
                 }
 
                 ImGui.TextUnformatted(
-                    $"InfoProxyCommonList[{i}] = {(entry->Index == null ? "null" : "not null")}, name {(entry->Name != null ? entry->NameString : "(null)")}"
+                    $"InfoProxyCommonList[{i}] = {(entry->Index == null ? "null" : "not null")}, name {(!entry->Name.IsEmpty ? entry->NameString : "(null)")}"
                 );
             }
         }
